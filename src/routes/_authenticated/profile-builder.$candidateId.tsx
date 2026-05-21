@@ -53,6 +53,7 @@ function ProfileBuilderForCandidate() {
   const listSections = useServerFn(listProfileSections);
   const saveSection = useServerFn(saveProfileSection);
   const generate = useServerFn(generateProfileSection);
+  const reorder = useServerFn(reorderProfileSections);
   const qc = useQueryClient();
 
   const { data: candData } = useQuery({
