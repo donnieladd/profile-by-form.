@@ -188,8 +188,9 @@ function CandidateDetailPage() {
         </TabsContent>
 
         <TabsContent value="presentation">
-          <PresentationTab candidate={candidate} />
+          <PresentationTab candidateId={candidateId} candidate={candidate} />
         </TabsContent>
+
 
       </Tabs>
     </div>
