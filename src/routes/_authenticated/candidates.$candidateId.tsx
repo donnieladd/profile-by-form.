@@ -43,6 +43,11 @@ import {
   listProfileSections,
   saveProfileSection,
 } from "@/lib/profile.functions";
+import {
+  CinematicPresentation,
+  type PresentationCandidate,
+} from "@/components/presentation/cinematic-presentation";
+
 
 export const Route = createFileRoute("/_authenticated/candidates/$candidateId")({
   head: () => ({
