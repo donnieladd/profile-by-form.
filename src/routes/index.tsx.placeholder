@@ -1,0 +1,1 @@
+// kept to satisfy any tooling expecting this name; the actual home route is src/routes/index.tsx
