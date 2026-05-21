@@ -36,6 +36,11 @@ import {
   listSourceItems,
   updateSourceItemStatus,
 } from "@/lib/source.functions";
+import {
+  generateProfileSection,
+  listProfileSections,
+  saveProfileSection,
+} from "@/lib/profile.functions";
 
 export const Route = createFileRoute("/_authenticated/candidates/$candidateId")({
   head: () => ({
