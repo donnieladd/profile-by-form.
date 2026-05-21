@@ -172,12 +172,7 @@ function CandidateDetailPage() {
         </TabsContent>
 
         <TabsContent value="profile">
-          <ShellCard className="p-10 text-center">
-            <h3 className="font-serif text-2xl">Profile builder</h3>
-            <p className="mt-3 text-sm text-foreground/55">
-              Wilson AI–assisted profile construction lands in the next phase.
-            </p>
-          </ShellCard>
+          <ProfileTab candidateId={candidateId} />
         </TabsContent>
 
         <TabsContent value="presentation">
