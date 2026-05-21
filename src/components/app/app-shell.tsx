@@ -1,6 +1,9 @@
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import {
   Bell,
+  BriefcaseBusiness,
   ChevronDown,
   FileText,
   FolderOpen,
@@ -16,8 +19,17 @@ import {
 import type { ReactNode } from "react";
 
 import { One39Logo, WilsonMark } from "@/components/brand/brand";
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { globalSearch } from "@/lib/search.functions";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -32,14 +44,55 @@ const navItems = [
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
+type Results = Awaited<ReturnType<typeof globalSearch>>;
+
 export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const search = useServerFn(globalSearch);
+
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<Results | null>(null);
+
+  // ⌘K / Ctrl+K
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // debounced search
+  useEffect(() => {
+    if (!open || !q.trim()) {
+      setResults(null);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const r = await search({ data: { q } });
+        setResults(r);
+      } catch {
+        setResults(null);
+      }
+    }, 200);
+    return () => clearTimeout(t);
+  }, [q, open, search]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
     navigate({ to: "/" });
+  }
+
+  function go(to: string) {
+    setOpen(false);
+    navigate({ to });
   }
 
   return (
@@ -92,13 +145,16 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className="lg:pl-[236px]">
         <header className="sticky top-0 z-30 flex h-[74px] items-center justify-between border-b border-foreground/10 bg-background/86 px-5 backdrop-blur-xl lg:px-8">
-          <div className="flex w-full max-w-2xl items-center gap-3 rounded-xl border border-foreground/10 bg-card px-4 py-3 text-sm text-foreground/40">
+          <button
+            onClick={() => setOpen(true)}
+            className="flex w-full max-w-2xl items-center gap-3 rounded-xl border border-foreground/10 bg-card px-4 py-3 text-sm text-foreground/40 transition hover:border-[color:var(--gold)]/40"
+          >
             <Search className="h-4 w-4" />
             <span>Search candidates, searches, presentations…</span>
             <span className="ml-auto rounded-md border border-foreground/10 px-2 py-1 text-xs">
               ⌘ K
             </span>
-          </div>
+          </button>
           <div className="ml-4 flex items-center gap-4">
             <Bell className="h-5 w-5 text-foreground/60" />
             <div className="hidden items-center gap-3 md:flex">
@@ -124,6 +180,82 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
         {children}
       </main>
+
+      <CommandDialog open={open} onOpenChange={setOpen}>
+        <CommandInput
+          placeholder="Search candidates, searches, presentations…"
+          value={q}
+          onValueChange={setQ}
+        />
+        <CommandList>
+          {!q.trim() && (
+            <CommandEmpty>Type to search across your workspace.</CommandEmpty>
+          )}
+          {q.trim() && !results && (
+            <CommandEmpty>Searching…</CommandEmpty>
+          )}
+          {results && results.candidates.length === 0 &&
+            results.searches.length === 0 &&
+            results.presentations.length === 0 && (
+              <CommandEmpty>No results.</CommandEmpty>
+            )}
+          {results && results.candidates.length > 0 && (
+            <CommandGroup heading="Candidates">
+              {results.candidates.map((c) => (
+                <CommandItem
+                  key={c.id}
+                  value={`cand-${c.id}-${c.full_name}`}
+                  onSelect={() => go(`/candidates/${c.id}`)}
+                >
+                  <Users className="mr-2 h-4 w-4 text-foreground/45" />
+                  <div>
+                    <div>{c.full_name}</div>
+                    <div className="text-xs text-foreground/45">
+                      {c.fit_role ?? c.current_org ?? c.email}
+                    </div>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {results && results.searches.length > 0 && (
+            <CommandGroup heading="Searches">
+              {results.searches.map((s) => (
+                <CommandItem
+                  key={s.id}
+                  value={`search-${s.id}-${s.church}`}
+                  onSelect={() => go(`/searches/${s.id}`)}
+                >
+                  <BriefcaseBusiness className="mr-2 h-4 w-4 text-foreground/45" />
+                  <div>
+                    <div>
+                      {s.church} · {s.role}
+                    </div>
+                    <div className="text-xs text-foreground/45">{s.city}</div>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {results && results.presentations.length > 0 && (
+            <CommandGroup heading="Presentations">
+              {results.presentations.map((p) => (
+                <CommandItem
+                  key={p.id}
+                  value={`pres-${p.id}-${p.title}`}
+                  onSelect={() => go(`/candidates/${p.candidate_id}`)}
+                >
+                  <Presentation className="mr-2 h-4 w-4 text-foreground/45" />
+                  <div>
+                    <div>{p.title}</div>
+                    <div className="text-xs text-foreground/45">{p.status}</div>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+        </CommandList>
+      </CommandDialog>
     </div>
   );
 }

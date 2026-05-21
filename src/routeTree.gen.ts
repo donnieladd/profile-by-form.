@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PShareSlugRouteImport } from './routes/p.$shareSlug'
 import { Route as AuthenticatedWilsonRouteImport } from './routes/_authenticated/wilson'
 import { Route as AuthenticatedSourceRouteImport } from './routes/_authenticated/source'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -37,6 +38,11 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PShareSlugRoute = PShareSlugRouteImport.update({
+  id: '/p/$shareSlug',
+  path: '/p/$shareSlug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedWilsonRoute = AuthenticatedWilsonRouteImport.update({
@@ -117,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/source': typeof AuthenticatedSourceRoute
   '/wilson': typeof AuthenticatedWilsonRoute
+  '/p/$shareSlug': typeof PShareSlugRoute
   '/candidates/$candidateId': typeof AuthenticatedCandidatesCandidateIdRoute
   '/profile-builder/$candidateId': typeof AuthenticatedProfileBuilderCandidateIdRoute
   '/searches/$searchId': typeof AuthenticatedSearchesSearchIdRoute
@@ -133,6 +140,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/source': typeof AuthenticatedSourceRoute
   '/wilson': typeof AuthenticatedWilsonRoute
+  '/p/$shareSlug': typeof PShareSlugRoute
   '/candidates/$candidateId': typeof AuthenticatedCandidatesCandidateIdRoute
   '/profile-builder/$candidateId': typeof AuthenticatedProfileBuilderCandidateIdRoute
   '/searches/$searchId': typeof AuthenticatedSearchesSearchIdRoute
@@ -151,6 +159,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/source': typeof AuthenticatedSourceRoute
   '/_authenticated/wilson': typeof AuthenticatedWilsonRoute
+  '/p/$shareSlug': typeof PShareSlugRoute
   '/_authenticated/candidates/$candidateId': typeof AuthenticatedCandidatesCandidateIdRoute
   '/_authenticated/profile-builder/$candidateId': typeof AuthenticatedProfileBuilderCandidateIdRoute
   '/_authenticated/searches/$searchId': typeof AuthenticatedSearchesSearchIdRoute
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/source'
     | '/wilson'
+    | '/p/$shareSlug'
     | '/candidates/$candidateId'
     | '/profile-builder/$candidateId'
     | '/searches/$searchId'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/source'
     | '/wilson'
+    | '/p/$shareSlug'
     | '/candidates/$candidateId'
     | '/profile-builder/$candidateId'
     | '/searches/$searchId'
@@ -202,6 +213,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/source'
     | '/_authenticated/wilson'
+    | '/p/$shareSlug'
     | '/_authenticated/candidates/$candidateId'
     | '/_authenticated/profile-builder/$candidateId'
     | '/_authenticated/searches/$searchId'
@@ -211,6 +223,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
+  PShareSlugRoute: typeof PShareSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -234,6 +247,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/p/$shareSlug': {
+      id: '/p/$shareSlug'
+      path: '/p/$shareSlug'
+      fullPath: '/p/$shareSlug'
+      preLoaderRoute: typeof PShareSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/wilson': {
@@ -399,7 +419,18 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
+  PShareSlugRoute: PShareSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
