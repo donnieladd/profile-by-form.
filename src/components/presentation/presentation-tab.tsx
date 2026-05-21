@@ -94,6 +94,32 @@ export function PresentationTab({
               Cover page
             </span>
           </label>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => shareMut.mutate({ regenerate: false })}
+            disabled={shareMut.isPending}
+          >
+            <LinkIcon className="mr-1.5 h-3.5 w-3.5" />
+            {shareMut.data?.share_slug ? (
+              <>
+                <Copy className="mr-1 h-3 w-3" />
+                Copy share link
+              </>
+            ) : (
+              "Create share link"
+            )}
+          </Button>
+          {shareMut.data?.share_slug && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => shareMut.mutate({ regenerate: true })}
+              title="Regenerate share link"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Printer className="mr-1.5 h-3.5 w-3.5" />
             Print
