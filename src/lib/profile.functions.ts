@@ -50,7 +50,7 @@ export const saveProfileSection = createServerFn({ method: "POST" })
         id: z.string().uuid(),
         body_md: z.string().max(20000).optional(),
         status: z
-          .enum(["not_started", "drafting", "ready_to_review", "approved"])
+          .enum(["not_started", "draft", "edited", "approved"])
           .optional(),
       })
       .parse(input),
@@ -142,7 +142,7 @@ export const generateProfileSection = createServerFn({ method: "POST" })
 
     await supabase
       .from("profile_sections")
-      .update({ status: "drafting" })
+      .update({ status: "draft" })
       .eq("id", data.section_id);
 
     const userPrompt = buildUserPrompt({
@@ -214,7 +214,7 @@ export const generateProfileSection = createServerFn({ method: "POST" })
     if (assembled.length > 0) {
       await supabase
         .from("profile_sections")
-        .update({ body_md: assembled, status: "ready_to_review" })
+        .update({ body_md: assembled, status: "edited" })
         .eq("id", data.section_id);
     }
 
