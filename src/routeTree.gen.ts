@@ -22,6 +22,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedCandidatesRouteImport } from './routes/_authenticated/candidates'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedSearchesSearchIdRouteImport } from './routes/_authenticated/searches.$searchId'
+import { Route as AuthenticatedProfileBuilderCandidateIdRouteImport } from './routes/_authenticated/profile-builder.$candidateId'
 import { Route as AuthenticatedCandidatesCandidateIdRouteImport } from './routes/_authenticated/candidates.$candidateId'
 
 const LoginRoute = LoginRouteImport.update({
@@ -91,6 +92,12 @@ const AuthenticatedSearchesSearchIdRoute =
     path: '/$searchId',
     getParentRoute: () => AuthenticatedSearchesRoute,
   } as any)
+const AuthenticatedProfileBuilderCandidateIdRoute =
+  AuthenticatedProfileBuilderCandidateIdRouteImport.update({
+    id: '/$candidateId',
+    path: '/$candidateId',
+    getParentRoute: () => AuthenticatedProfileBuilderRoute,
+  } as any)
 const AuthenticatedCandidatesCandidateIdRoute =
   AuthenticatedCandidatesCandidateIdRouteImport.update({
     id: '/$candidateId',
@@ -105,12 +112,13 @@ export interface FileRoutesByFullPath {
   '/candidates': typeof AuthenticatedCandidatesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/presentations': typeof AuthenticatedPresentationsRoute
-  '/profile-builder': typeof AuthenticatedProfileBuilderRoute
+  '/profile-builder': typeof AuthenticatedProfileBuilderRouteWithChildren
   '/searches': typeof AuthenticatedSearchesRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/source': typeof AuthenticatedSourceRoute
   '/wilson': typeof AuthenticatedWilsonRoute
   '/candidates/$candidateId': typeof AuthenticatedCandidatesCandidateIdRoute
+  '/profile-builder/$candidateId': typeof AuthenticatedProfileBuilderCandidateIdRoute
   '/searches/$searchId': typeof AuthenticatedSearchesSearchIdRoute
 }
 export interface FileRoutesByTo {
@@ -120,12 +128,13 @@ export interface FileRoutesByTo {
   '/candidates': typeof AuthenticatedCandidatesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/presentations': typeof AuthenticatedPresentationsRoute
-  '/profile-builder': typeof AuthenticatedProfileBuilderRoute
+  '/profile-builder': typeof AuthenticatedProfileBuilderRouteWithChildren
   '/searches': typeof AuthenticatedSearchesRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/source': typeof AuthenticatedSourceRoute
   '/wilson': typeof AuthenticatedWilsonRoute
   '/candidates/$candidateId': typeof AuthenticatedCandidatesCandidateIdRoute
+  '/profile-builder/$candidateId': typeof AuthenticatedProfileBuilderCandidateIdRoute
   '/searches/$searchId': typeof AuthenticatedSearchesSearchIdRoute
 }
 export interface FileRoutesById {
@@ -137,12 +146,13 @@ export interface FileRoutesById {
   '/_authenticated/candidates': typeof AuthenticatedCandidatesRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/presentations': typeof AuthenticatedPresentationsRoute
-  '/_authenticated/profile-builder': typeof AuthenticatedProfileBuilderRoute
+  '/_authenticated/profile-builder': typeof AuthenticatedProfileBuilderRouteWithChildren
   '/_authenticated/searches': typeof AuthenticatedSearchesRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/source': typeof AuthenticatedSourceRoute
   '/_authenticated/wilson': typeof AuthenticatedWilsonRoute
   '/_authenticated/candidates/$candidateId': typeof AuthenticatedCandidatesCandidateIdRoute
+  '/_authenticated/profile-builder/$candidateId': typeof AuthenticatedProfileBuilderCandidateIdRoute
   '/_authenticated/searches/$searchId': typeof AuthenticatedSearchesSearchIdRoute
 }
 export interface FileRouteTypes {
@@ -160,6 +170,7 @@ export interface FileRouteTypes {
     | '/source'
     | '/wilson'
     | '/candidates/$candidateId'
+    | '/profile-builder/$candidateId'
     | '/searches/$searchId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -175,6 +186,7 @@ export interface FileRouteTypes {
     | '/source'
     | '/wilson'
     | '/candidates/$candidateId'
+    | '/profile-builder/$candidateId'
     | '/searches/$searchId'
   id:
     | '__root__'
@@ -191,6 +203,7 @@ export interface FileRouteTypes {
     | '/_authenticated/source'
     | '/_authenticated/wilson'
     | '/_authenticated/candidates/$candidateId'
+    | '/_authenticated/profile-builder/$candidateId'
     | '/_authenticated/searches/$searchId'
   fileRoutesById: FileRoutesById
 }
@@ -293,6 +306,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSearchesSearchIdRouteImport
       parentRoute: typeof AuthenticatedSearchesRoute
     }
+    '/_authenticated/profile-builder/$candidateId': {
+      id: '/_authenticated/profile-builder/$candidateId'
+      path: '/$candidateId'
+      fullPath: '/profile-builder/$candidateId'
+      preLoaderRoute: typeof AuthenticatedProfileBuilderCandidateIdRouteImport
+      parentRoute: typeof AuthenticatedProfileBuilderRoute
+    }
     '/_authenticated/candidates/$candidateId': {
       id: '/_authenticated/candidates/$candidateId'
       path: '/$candidateId'
@@ -318,6 +338,21 @@ const AuthenticatedCandidatesRouteWithChildren =
     AuthenticatedCandidatesRouteChildren,
   )
 
+interface AuthenticatedProfileBuilderRouteChildren {
+  AuthenticatedProfileBuilderCandidateIdRoute: typeof AuthenticatedProfileBuilderCandidateIdRoute
+}
+
+const AuthenticatedProfileBuilderRouteChildren: AuthenticatedProfileBuilderRouteChildren =
+  {
+    AuthenticatedProfileBuilderCandidateIdRoute:
+      AuthenticatedProfileBuilderCandidateIdRoute,
+  }
+
+const AuthenticatedProfileBuilderRouteWithChildren =
+  AuthenticatedProfileBuilderRoute._addFileChildren(
+    AuthenticatedProfileBuilderRouteChildren,
+  )
+
 interface AuthenticatedSearchesRouteChildren {
   AuthenticatedSearchesSearchIdRoute: typeof AuthenticatedSearchesSearchIdRoute
 }
@@ -336,7 +371,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCandidatesRoute: typeof AuthenticatedCandidatesRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPresentationsRoute: typeof AuthenticatedPresentationsRoute
-  AuthenticatedProfileBuilderRoute: typeof AuthenticatedProfileBuilderRoute
+  AuthenticatedProfileBuilderRoute: typeof AuthenticatedProfileBuilderRouteWithChildren
   AuthenticatedSearchesRoute: typeof AuthenticatedSearchesRouteWithChildren
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedSourceRoute: typeof AuthenticatedSourceRoute
@@ -348,7 +383,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCandidatesRoute: AuthenticatedCandidatesRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPresentationsRoute: AuthenticatedPresentationsRoute,
-  AuthenticatedProfileBuilderRoute: AuthenticatedProfileBuilderRoute,
+  AuthenticatedProfileBuilderRoute:
+    AuthenticatedProfileBuilderRouteWithChildren,
   AuthenticatedSearchesRoute: AuthenticatedSearchesRouteWithChildren,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedSourceRoute: AuthenticatedSourceRoute,
