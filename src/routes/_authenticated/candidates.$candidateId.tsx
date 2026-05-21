@@ -181,14 +181,9 @@ function CandidateDetailPage() {
         </TabsContent>
 
         <TabsContent value="presentation">
-          <ShellCard className="p-10 text-center">
-            <h3 className="font-serif text-2xl">Cinematic presentation</h3>
-            <p className="mt-3 text-sm text-foreground/55">
-              Generate and share an executive-ready candidate page in the next
-              phase.
-            </p>
-          </ShellCard>
+          <PresentationTab candidate={candidate} />
         </TabsContent>
+
       </Tabs>
     </div>
   );
