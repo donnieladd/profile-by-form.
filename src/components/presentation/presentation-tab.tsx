@@ -13,6 +13,7 @@ import {
 } from "@/components/presentation/cinematic-presentation";
 import { listProfileSections } from "@/lib/profile.functions";
 import { createOrRefreshShareLink } from "@/lib/presentations.functions";
+import { getPresentationStats } from "@/lib/presentation-analytics.functions";
 
 export function PresentationTab({
   candidateId,
@@ -23,11 +24,18 @@ export function PresentationTab({
 }) {
   const list = useServerFn(listProfileSections);
   const shareFn = useServerFn(createOrRefreshShareLink);
+  const statsFn = useServerFn(getPresentationStats);
   const qc = useQueryClient();
   const { data: sections, isLoading } = useQuery({
     queryKey: ["profile-sections", candidateId],
     queryFn: () => list({ data: { candidate_id: candidateId } }),
   });
+  const { data: viewStats } = useQuery({
+    queryKey: ["presentation-stats", candidateId],
+    queryFn: () => statsFn({ data: { candidate_id: candidateId } }),
+    refetchInterval: 30_000,
+  });
+
 
   const [showCover, setShowCover] = useState(true);
 
@@ -146,6 +154,25 @@ export function PresentationTab({
           }))}
         />
       </div>
+
+      {viewStats && viewStats.total > 0 && (
+        <ShellCard className="p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[color:var(--gold-deep)]">
+                Share link analytics
+              </div>
+              <div className="mt-1 text-sm text-foreground/55">
+                {viewStats.total} view{viewStats.total === 1 ? "" : "s"} ·{" "}
+                {viewStats.uniqueViewers} unique
+                {viewStats.last
+                  ? ` · last opened ${new Date(viewStats.last).toLocaleString()}`
+                  : ""}
+              </div>
+            </div>
+          </div>
+        </ShellCard>
+      )}
 
       <p className="text-center text-xs text-foreground/45">
         Tip: in the print dialog, choose "Save as PDF" as the destination. Page

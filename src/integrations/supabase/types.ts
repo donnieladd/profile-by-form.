@@ -98,6 +98,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          kind: string
+          link: string | null
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          link?: string | null
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          link?: string | null
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       presentation_sections: {
         Row: {
           content: Json
@@ -135,6 +168,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      presentation_views: {
+        Row: {
+          id: string
+          presentation_id: string
+          referrer: string | null
+          share_slug: string
+          user_agent: string | null
+          viewed_at: string
+          viewer_hash: string | null
+        }
+        Insert: {
+          id?: string
+          presentation_id: string
+          referrer?: string | null
+          share_slug: string
+          user_agent?: string | null
+          viewed_at?: string
+          viewer_hash?: string | null
+        }
+        Update: {
+          id?: string
+          presentation_id?: string
+          referrer?: string | null
+          share_slug?: string
+          user_agent?: string | null
+          viewed_at?: string
+          viewer_hash?: string | null
+        }
+        Relationships: []
       }
       presentations: {
         Row: {
@@ -454,6 +517,65 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      wilson_conversations: {
+        Row: {
+          candidate_id: string | null
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          candidate_id?: string | null
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          candidate_id?: string | null
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wilson_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          role: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          role: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wilson_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "wilson_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

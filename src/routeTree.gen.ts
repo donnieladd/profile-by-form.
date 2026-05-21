@@ -20,6 +20,7 @@ import { Route as AuthenticatedSearchesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedProfileBuilderRouteImport } from './routes/_authenticated/profile-builder'
 import { Route as AuthenticatedPresentationsRouteImport } from './routes/_authenticated/presentations'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedCandidates_compareRouteImport } from './routes/_authenticated/candidates_compare'
 import { Route as AuthenticatedCandidatesRouteImport } from './routes/_authenticated/candidates'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedSearchesSearchIdRouteImport } from './routes/_authenticated/searches.$searchId'
@@ -82,6 +83,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedCandidates_compareRoute =
+  AuthenticatedCandidates_compareRouteImport.update({
+    id: '/candidates_compare',
+    path: '/candidates_compare',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedCandidatesRoute = AuthenticatedCandidatesRouteImport.update({
   id: '/candidates',
   path: '/candidates',
@@ -116,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/candidates': typeof AuthenticatedCandidatesRouteWithChildren
+  '/candidates_compare': typeof AuthenticatedCandidates_compareRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/presentations': typeof AuthenticatedPresentationsRoute
   '/profile-builder': typeof AuthenticatedProfileBuilderRouteWithChildren
@@ -133,6 +141,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/candidates': typeof AuthenticatedCandidatesRouteWithChildren
+  '/candidates_compare': typeof AuthenticatedCandidates_compareRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/presentations': typeof AuthenticatedPresentationsRoute
   '/profile-builder': typeof AuthenticatedProfileBuilderRouteWithChildren
@@ -152,6 +161,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/candidates': typeof AuthenticatedCandidatesRouteWithChildren
+  '/_authenticated/candidates_compare': typeof AuthenticatedCandidates_compareRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/presentations': typeof AuthenticatedPresentationsRoute
   '/_authenticated/profile-builder': typeof AuthenticatedProfileBuilderRouteWithChildren
@@ -171,6 +181,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin'
     | '/candidates'
+    | '/candidates_compare'
     | '/dashboard'
     | '/presentations'
     | '/profile-builder'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin'
     | '/candidates'
+    | '/candidates_compare'
     | '/dashboard'
     | '/presentations'
     | '/profile-builder'
@@ -206,6 +218,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/admin'
     | '/_authenticated/candidates'
+    | '/_authenticated/candidates_compare'
     | '/_authenticated/dashboard'
     | '/_authenticated/presentations'
     | '/_authenticated/profile-builder'
@@ -305,6 +318,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/candidates_compare': {
+      id: '/_authenticated/candidates_compare'
+      path: '/candidates_compare'
+      fullPath: '/candidates_compare'
+      preLoaderRoute: typeof AuthenticatedCandidates_compareRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/candidates': {
       id: '/_authenticated/candidates'
       path: '/candidates'
@@ -389,6 +409,7 @@ const AuthenticatedSearchesRouteWithChildren =
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedCandidatesRoute: typeof AuthenticatedCandidatesRouteWithChildren
+  AuthenticatedCandidates_compareRoute: typeof AuthenticatedCandidates_compareRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPresentationsRoute: typeof AuthenticatedPresentationsRoute
   AuthenticatedProfileBuilderRoute: typeof AuthenticatedProfileBuilderRouteWithChildren
@@ -401,6 +422,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedCandidatesRoute: AuthenticatedCandidatesRouteWithChildren,
+  AuthenticatedCandidates_compareRoute: AuthenticatedCandidates_compareRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPresentationsRoute: AuthenticatedPresentationsRoute,
   AuthenticatedProfileBuilderRoute:
@@ -424,13 +446,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
