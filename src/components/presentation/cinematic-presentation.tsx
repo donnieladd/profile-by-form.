@@ -49,6 +49,7 @@ export function CinematicPresentation({
 
       {/* Cover */}
       {showCover && (
+        <section className="cinematic-cover relative isolate flex min-h-[820px] flex-col justify-between overflow-hidden px-12 py-14 lg:px-20 lg:py-20">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 -z-10"
