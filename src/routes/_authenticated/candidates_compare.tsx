@@ -18,11 +18,13 @@ export const Route = createFileRoute("/_authenticated/candidates_compare")({
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),
-  validateSearch: (search: Record<string, unknown>): Search => ({
-    ids: typeof search.ids === "string" ? search.ids : undefined,
+  validateSearch: (s: Record<string, unknown>): Search => ({
+    ids: typeof s.ids === "string" ? s.ids : undefined,
   }),
   component: CompareCandidatesPage,
 });
+
+
 
 function CompareCandidatesPage() {
   const search = Route.useSearch();
