@@ -99,7 +99,10 @@ export function CinematicPresentation({
             Prepared for principal review
           </div>
         </footer>
-      </section>
+        </section>
+      )}
+
+
 
       {/* Table of contents */}
       {withBody.length > 0 && (
