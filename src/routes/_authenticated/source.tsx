@@ -1,7 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { CheckCircle2, Cloud, MoreHorizontal, Upload } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { FolderOpen } from "lucide-react";
 
-import { PageHeader, Pill, ShellCard } from "@/components/brand/brand";
+import { PageHeader, ShellCard } from "@/components/brand/brand";
+import { listCandidates } from "@/lib/candidates.functions";
 
 export const Route = createFileRoute("/_authenticated/source")({
   head: () => ({
@@ -10,72 +13,57 @@ export const Route = createFileRoute("/_authenticated/source")({
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),
-  component: SourcePage,
+  component: SourceIndexPage,
 });
 
-const items = [
-  "Candidate resume",
-  "Ministry assessment form",
-  "Life story form",
-  "Candidate references",
-  "Spouse materials",
-  "Interview notes",
-  "Search manager notes",
-  "Candidate photos",
-];
+function SourceIndexPage() {
+  const list = useServerFn(listCandidates);
+  const { data, isLoading } = useQuery({
+    queryKey: ["candidates", {}],
+    queryFn: () => list({}),
+  });
 
-function SourcePage() {
   return (
     <div className="p-6 lg:p-8">
       <PageHeader
         eyebrow="Source intake"
-        title="Build the source package."
-        subtitle="Upload directly, pull from ONE39's Monday.com boards, or combine both into one reviewed package."
+        title="Source packages by candidate."
+        subtitle="Open a candidate to upload resumes, references, assessments, and notes — the foundation of every cinematic profile."
       />
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-        <ShellCard className="xl:col-span-7 overflow-hidden">
-          <div className="bg-[color:var(--soft)] p-6">
-            <Pill>Source intake</Pill>
-            <h2 className="mt-4 font-serif text-3xl tracking-tight">
-              Choose where the candidate materials come from
-            </h2>
+      <ShellCard className="overflow-hidden">
+        <div className="border-b border-foreground/10 bg-[color:var(--soft)] px-5 py-4 text-xs font-bold uppercase tracking-[.16em] text-foreground/42">
+          Candidate
+        </div>
+        {isLoading && (
+          <div className="px-5 py-10 text-sm text-foreground/45">Loading…</div>
+        )}
+        {!isLoading && (data ?? []).length === 0 && (
+          <div className="px-5 py-12 text-center text-sm text-foreground/55">
+            No candidates yet. Add one to begin building source packages.
           </div>
-          <div className="grid gap-4 p-6 md:grid-cols-2">
-            <div className="rounded-[28px] border border-dashed border-[color:var(--gold)]/45 bg-[color:var(--gold)]/8 p-8 text-center">
-              <Upload className="mx-auto h-10 w-10 text-[color:var(--gold-deep)]" />
-              <div className="mt-4 text-lg font-medium">Upload files</div>
-              <div className="mt-1 text-sm text-foreground/45">
-                PDF, DOCX, images, notes, resumes
+        )}
+        {(data ?? []).map((c) => (
+          <Link
+            key={c.id}
+            to="/candidates/$candidateId"
+            params={{ candidateId: c.id }}
+            className="flex items-center justify-between border-t border-foreground/10 px-5 py-4 hover:bg-[color:var(--soft)]"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--gold)]/15 text-[color:var(--gold-deep)]">
+                <FolderOpen className="h-4 w-4" />
+              </div>
+              <div>
+                <div className="font-semibold">{c.full_name}</div>
+                <div className="text-xs text-foreground/45">
+                  {c.current_title ?? "—"} · {c.city ?? "—"}
+                </div>
               </div>
             </div>
-            <div className="rounded-[28px] border border-foreground/10 bg-[color:var(--deep)] p-8 text-center text-white">
-              <Cloud className="mx-auto h-10 w-10 text-[color:var(--gold)]" />
-              <div className="mt-4 text-lg font-medium">Pull from Monday</div>
-              <div className="mt-1 text-sm text-white/45">
-                Jobs, candidates, files, updates
-              </div>
-            </div>
-          </div>
-        </ShellCard>
-        <ShellCard className="xl:col-span-5 p-6">
-          <h3 className="font-serif text-xl">Source package builder</h3>
-          <div className="mt-5 space-y-3">
-            {items.map((item, i) => (
-              <div
-                key={item}
-                className="flex items-center justify-between rounded-2xl border border-foreground/10 bg-[color:var(--soft)] p-3"
-              >
-                <span className="text-sm text-foreground/70">{item}</span>
-                {i < 4 ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                ) : (
-                  <MoreHorizontal className="h-4 w-4 text-foreground/25" />
-                )}
-              </div>
-            ))}
-          </div>
-        </ShellCard>
-      </div>
+            <div className="text-xs text-foreground/45">Open package →</div>
+          </Link>
+        ))}
+      </ShellCard>
     </div>
   );
 }
