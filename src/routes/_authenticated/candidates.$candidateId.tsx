@@ -368,3 +368,163 @@ function SourcePackageTab({ candidateId }: { candidateId: string }) {
     </ShellCard>
   );
 }
+
+function ProfileTab({ candidateId }: { candidateId: string }) {
+  const list = useServerFn(listProfileSections);
+  const save = useServerFn(saveProfileSection);
+  const generate = useServerFn(generateProfileSection);
+  const qc = useQueryClient();
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<string>("");
+  const [streamingId, setStreamingId] = useState<string | null>(null);
+
+  const { data: sections, isLoading } = useQuery({
+    queryKey: ["profile-sections", candidateId],
+    queryFn: () => list({ data: { candidate_id: candidateId } }),
+  });
+
+  const active = sections?.find((s) => s.id === activeId) ?? sections?.[0];
+  const activeKey = active?.id;
+
+  // Sync editor when active section changes (and not currently streaming)
+  if (activeKey && activeKey !== streamingId) {
+    const expected = active?.body_md ?? "";
+    if (draft === "" && expected !== "") setDraft(expected);
+  }
+
+  async function handleGenerate() {
+    if (!active) return;
+    setStreamingId(active.id);
+    setDraft("");
+    try {
+      const stream = await generate({
+        data: {
+          section_id: active.id,
+          candidate_id: candidateId,
+          section_key: active.section_key,
+        },
+      });
+      for await (const chunk of stream as AsyncIterable<{ delta?: string; done?: boolean }>) {
+        if (chunk.delta) setDraft((prev) => prev + chunk.delta);
+      }
+      toast.success("Draft ready for review");
+      qc.invalidateQueries({ queryKey: ["profile-sections", candidateId] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Wilson failed");
+    } finally {
+      setStreamingId(null);
+    }
+  }
+
+  async function handleSave(status?: "edited" | "approved") {
+    if (!active) return;
+    try {
+      await save({ data: { id: active.id, body_md: draft, status } });
+      toast.success(status === "approved" ? "Section approved" : "Section saved");
+      qc.invalidateQueries({ queryKey: ["profile-sections", candidateId] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    }
+  }
+
+  if (isLoading)
+    return <div className="text-sm text-foreground/45">Loading…</div>;
+
+  return (
+    <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+      <ShellCard className="xl:col-span-4 p-5">
+        <Pill>Sections</Pill>
+        <div className="mt-5 space-y-2">
+          {(sections ?? []).map((s, i) => {
+            const isActive = (active?.id ?? "") === s.id;
+            return (
+              <button
+                key={s.id}
+                onClick={() => {
+                  setActiveId(s.id);
+                  setDraft(s.body_md ?? "");
+                }}
+                className={`w-full text-left rounded-2xl border p-3 transition ${
+                  isActive
+                    ? "border-[color:var(--gold)]/60 bg-[color:var(--gold)]/8"
+                    : "border-foreground/10 bg-card hover:border-foreground/25"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/35">
+                    {String(i + 1).padStart(2, "0")}
+                  </div>
+                  <Pill
+                    tone={
+                      s.status === "approved"
+                        ? "green"
+                        : s.status === "edited"
+                          ? "blue"
+                          : s.status === "draft"
+                            ? "gold"
+                            : "soft"
+                    }
+                  >
+                    {s.status.replace("_", " ")}
+                  </Pill>
+                </div>
+                <div className="mt-1 text-sm font-medium">{s.title}</div>
+              </button>
+            );
+          })}
+        </div>
+      </ShellCard>
+
+      <ShellCard className="xl:col-span-8 overflow-hidden">
+        <div className="border-b border-foreground/10 bg-[color:var(--soft)] px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-[color:var(--gold-deep)]">
+              Wilson AI · grounded in source package
+            </div>
+            <h3 className="mt-1 font-serif text-xl">
+              {active?.title ?? "Select a section"}
+            </h3>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!active || streamingId !== null}
+              onClick={handleGenerate}
+            >
+              {streamingId === active?.id ? "Drafting…" : "Ask Wilson to draft"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!active || streamingId !== null}
+              onClick={() => handleSave("edited")}
+            >
+              Save
+            </Button>
+            <Button
+              size="sm"
+              disabled={!active || streamingId !== null || !draft.trim()}
+              onClick={() => handleSave("approved")}
+            >
+              Approve
+            </Button>
+          </div>
+        </div>
+        <div className="p-6">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="No draft yet. Ask Wilson to compose this section from the source package, then refine the prose."
+            className="min-h-[420px] w-full resize-y rounded-2xl border border-foreground/10 bg-card p-5 font-serif text-[15px] leading-8 text-foreground/85 outline-none focus:border-[color:var(--gold)]/50"
+          />
+          {streamingId === active?.id && (
+            <div className="mt-3 text-xs uppercase tracking-[0.2em] text-[color:var(--gold-deep)]">
+              Wilson is writing…
+            </div>
+          )}
+        </div>
+      </ShellCard>
+    </div>
+  );
+}
