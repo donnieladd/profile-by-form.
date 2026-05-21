@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
 
@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getPublicPresentation } from "@/lib/presentations.functions";
+import { logPresentationView } from "@/lib/presentation-analytics.functions";
 
 export const Route = createFileRoute("/p/$shareSlug")({
   head: () => ({
@@ -26,6 +27,7 @@ function PublicSharePage() {
   const [submittedCode, setSubmittedCode] = useState<string | undefined>(
     undefined,
   );
+  const [logged, setLogged] = useState(false);
 
   const loadMut = useMutation({
     mutationFn: () =>
@@ -34,10 +36,28 @@ function PublicSharePage() {
       }),
   });
 
-  // initial fetch on mount
   if (loadMut.isIdle) loadMut.mutate();
 
   const result = loadMut.data;
+
+  // log view once a successful payload comes back
+  useEffect(() => {
+    if (logged || !result || "error" in result) return;
+    setLogged(true);
+    logPresentationView({
+      data: {
+        share_slug: shareSlug,
+        user_agent:
+          typeof navigator !== "undefined"
+            ? navigator.userAgent.slice(0, 500)
+            : undefined,
+        referrer:
+          typeof document !== "undefined"
+            ? (document.referrer ?? "").slice(0, 500) || undefined
+            : undefined,
+      },
+    }).catch(() => {});
+  }, [result, logged, shareSlug]);
 
   if (loadMut.isPending && !result) {
     return (

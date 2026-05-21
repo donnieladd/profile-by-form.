@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Bell,
@@ -9,6 +10,7 @@ import {
   FolderOpen,
   LayoutDashboard,
   LogOut,
+  Menu,
   Presentation,
   Search,
   Settings,
@@ -27,8 +29,24 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  listNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from "@/lib/notifications.functions";
 import { globalSearch } from "@/lib/search.functions";
 import { cn } from "@/lib/utils";
 
@@ -46,17 +64,165 @@ const navItems = [
 
 type Results = Awaited<ReturnType<typeof globalSearch>>;
 
-export function AppShell({ children }: { children: ReactNode }) {
+function NavList({ onNav }: { onNav?: () => void }) {
   const location = useLocation();
+  return (
+    <nav className="flex-1 space-y-1 px-4">
+      {navItems.map((item) => {
+        const Icon = item.icon;
+        const active = location.pathname.startsWith(item.to);
+        return (
+          <Link
+            key={item.to}
+            to={item.to}
+            onClick={onNav}
+            className={cn(
+              "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm transition",
+              active
+                ? "bg-white/10 text-[color:var(--gold)]"
+                : "text-white/60 hover:bg-white/[0.06] hover:text-white",
+            )}
+          >
+            <Icon className="h-4 w-4" />
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function SidebarInner() {
+  return (
+    <>
+      <div className="p-8">
+        <Link to="/dashboard">
+          <One39Logo />
+        </Link>
+        <div className="mt-8 font-serif text-lg leading-none text-[color:var(--gold)]">
+          profile by form.
+        </div>
+        <div className="mt-1 text-xs tracking-[0.18em] text-white/40">
+          beta for One39
+        </div>
+      </div>
+      <NavList />
+      <div className="p-6">
+        <div className="rounded-2xl border border-[color:var(--gold)]/30 bg-[color:var(--gold)]/10 p-5">
+          <WilsonMark className="h-11 w-14 text-[color:var(--gold)]" />
+          <div className="mt-4 text-sm font-semibold text-[color:var(--gold)]">
+            Wilson AI
+          </div>
+          <p className="mt-2 text-xs leading-5 text-white/48">
+            Secure. Private. Built for ministry.
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function NotificationsBell() {
+  const listFn = useServerFn(listNotifications);
+  const markFn = useServerFn(markNotificationRead);
+  const markAllFn = useServerFn(markAllNotificationsRead);
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+
+  const { data } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => listFn(),
+    refetchInterval: 60_000,
+  });
+
+  const unread = data?.unread ?? 0;
+
+  async function openItem(id: string, link: string | null) {
+    await markFn({ data: { id } });
+    qc.invalidateQueries({ queryKey: ["notifications"] });
+    setOpen(false);
+    if (link) navigate({ to: link });
+  }
+
+  async function markAll() {
+    await markAllFn();
+    qc.invalidateQueries({ queryKey: ["notifications"] });
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button className="relative rounded-md p-2 text-foreground/60 hover:bg-foreground/5">
+          <Bell className="h-5 w-5" />
+          {unread > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-[color:var(--gold-deep)] px-1 text-[10px] font-bold text-white">
+              {unread > 9 ? "9+" : unread}
+            </span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-0">
+        <div className="flex items-center justify-between border-b border-foreground/10 px-4 py-3">
+          <div className="text-sm font-semibold">Notifications</div>
+          {unread > 0 && (
+            <button
+              onClick={markAll}
+              className="text-xs text-foreground/55 hover:text-foreground"
+            >
+              Mark all read
+            </button>
+          )}
+        </div>
+        <div className="max-h-[420px] overflow-y-auto">
+          {(data?.rows ?? []).length === 0 && (
+            <div className="p-6 text-center text-sm text-foreground/45">
+              You're all caught up.
+            </div>
+          )}
+          {(data?.rows ?? []).map((n) => (
+            <button
+              key={n.id}
+              onClick={() => openItem(n.id, n.link)}
+              className={cn(
+                "block w-full border-b border-foreground/5 px-4 py-3 text-left transition hover:bg-foreground/[0.03]",
+                !n.read_at && "bg-[color:var(--gold)]/[0.06]",
+              )}
+            >
+              <div className="flex items-start gap-2">
+                {!n.read_at && (
+                  <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--gold-deep)]" />
+                )}
+                <div className="flex-1">
+                  <div className="text-sm font-medium">{n.title}</div>
+                  {n.body && (
+                    <div className="mt-0.5 text-xs text-foreground/55">
+                      {n.body}
+                    </div>
+                  )}
+                  <div className="mt-1 text-[10px] uppercase tracking-[.16em] text-foreground/35">
+                    {new Date(n.created_at).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const search = useServerFn(globalSearch);
 
   const [open, setOpen] = useState(false);
+  const [mobileNav, setMobileNav] = useState(false);
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Results | null>(null);
 
-  // ⌘K / Ctrl+K
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -68,7 +234,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // debounced search
   useEffect(() => {
     if (!open || !q.trim()) {
       setResults(null);
@@ -98,65 +263,43 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <aside className="fixed inset-y-0 left-0 hidden w-[236px] flex-col border-r border-white/10 bg-[color:var(--deep)] text-white lg:flex">
-        <div className="p-8">
-          <Link to="/dashboard">
-            <One39Logo />
-          </Link>
-          <div className="mt-8 font-serif text-lg leading-none text-[color:var(--gold)]">
-            profile by form.
-          </div>
-          <div className="mt-1 text-xs tracking-[0.18em] text-white/40">
-            beta for One39
-          </div>
-        </div>
-        <nav className="flex-1 space-y-1 px-4">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = location.pathname.startsWith(item.to);
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm transition",
-                  active
-                    ? "bg-white/10 text-[color:var(--gold)]"
-                    : "text-white/60 hover:bg-white/[0.06] hover:text-white",
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="p-6">
-          <div className="rounded-2xl border border-[color:var(--gold)]/30 bg-[color:var(--gold)]/10 p-5">
-            <WilsonMark className="h-11 w-14 text-[color:var(--gold)]" />
-            <div className="mt-4 text-sm font-semibold text-[color:var(--gold)]">
-              Wilson AI
-            </div>
-            <p className="mt-2 text-xs leading-5 text-white/48">
-              Secure. Private. Built for ministry.
-            </p>
-          </div>
-        </div>
+        <SidebarInner />
       </aside>
 
       <main className="lg:pl-[236px]">
-        <header className="sticky top-0 z-30 flex h-[74px] items-center justify-between border-b border-foreground/10 bg-background/86 px-5 backdrop-blur-xl lg:px-8">
+        <header className="sticky top-0 z-30 flex h-[74px] items-center justify-between gap-3 border-b border-foreground/10 bg-background/86 px-4 backdrop-blur-xl lg:px-8">
+          <Sheet open={mobileNav} onOpenChange={setMobileNav}>
+            <SheetTrigger asChild>
+              <button className="rounded-md p-2 text-foreground/60 hover:bg-foreground/5 lg:hidden">
+                <Menu className="h-5 w-5" />
+              </button>
+            </SheetTrigger>
+            <SheetContent
+              side="left"
+              className="w-[260px] border-r border-white/10 bg-[color:var(--deep)] p-0 text-white"
+            >
+              <SheetTitle className="sr-only">Navigation</SheetTitle>
+              <div className="flex h-full flex-col" onClick={() => setMobileNav(false)}>
+                <SidebarInner />
+              </div>
+            </SheetContent>
+          </Sheet>
+
           <button
             onClick={() => setOpen(true)}
             className="flex w-full max-w-2xl items-center gap-3 rounded-xl border border-foreground/10 bg-card px-4 py-3 text-sm text-foreground/40 transition hover:border-[color:var(--gold)]/40"
           >
             <Search className="h-4 w-4" />
-            <span>Search candidates, searches, presentations…</span>
+            <span className="hidden sm:inline">
+              Search candidates, searches, presentations…
+            </span>
+            <span className="sm:hidden">Search…</span>
             <span className="ml-auto rounded-md border border-foreground/10 px-2 py-1 text-xs">
               ⌘ K
             </span>
           </button>
-          <div className="ml-4 flex items-center gap-4">
-            <Bell className="h-5 w-5 text-foreground/60" />
+          <div className="flex items-center gap-2">
+            <NotificationsBell />
             <div className="hidden items-center gap-3 md:flex">
               <div className="h-10 w-10 rounded-full bg-[linear-gradient(135deg,var(--gold),var(--ink))]" />
               <div className="text-sm">
