@@ -1,7 +1,22 @@
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Sparkles } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import ReactMarkdown from "react-markdown";
+import { ArrowUp, Plus, Sparkles } from "lucide-react";
 
 import { DarkCard, PageHeader, WilsonMark } from "@/components/brand/brand";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { listCandidates } from "@/lib/candidates.functions";
+import { streamWilsonChat } from "@/lib/wilson.functions";
 
 export const Route = createFileRoute("/_authenticated/wilson")({
   head: () => ({
@@ -13,31 +28,204 @@ export const Route = createFileRoute("/_authenticated/wilson")({
   component: WilsonPage,
 });
 
+type Msg = { role: "user" | "assistant"; content: string };
+
 function WilsonPage() {
+  const listCands = useServerFn(listCandidates);
+  const chatFn = useServerFn(streamWilsonChat);
+
+  const { data: candidates } = useQuery({
+    queryKey: ["candidates"],
+    queryFn: () => listCands({ data: {} }),
+  });
+
+  const [messages, setMessages] = useState<Msg[]>([]);
+  const [input, setInput] = useState("");
+  const [streaming, setStreaming] = useState(false);
+  const [candidateId, setCandidateId] = useState<string>("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [messages, streaming]);
+
+  async function send() {
+    const text = input.trim();
+    if (!text || streaming) return;
+    const nextMessages: Msg[] = [
+      ...messages,
+      { role: "user", content: text },
+      { role: "assistant", content: "" },
+    ];
+    setMessages(nextMessages);
+    setInput("");
+    setStreaming(true);
+
+    const selected = candidates?.find((c) => c.id === candidateId);
+    const candidateContext = selected
+      ? `Name: ${selected.full_name}\nRole fit: ${selected.fit_role ?? "—"}\nCurrent: ${selected.current_title ?? "—"} at ${selected.current_org ?? "—"}\nCity: ${selected.city ?? "—"}`
+      : undefined;
+
+    try {
+      const iter = await chatFn({
+        data: {
+          messages: nextMessages
+            .slice(0, -1)
+            .map((m) => ({ role: m.role, content: m.content })),
+          candidate_context: candidateContext,
+        },
+      });
+      for await (const chunk of iter as AsyncIterable<{ delta: string }>) {
+        setMessages((prev) => {
+          const copy = [...prev];
+          copy[copy.length - 1] = {
+            role: "assistant",
+            content: copy[copy.length - 1].content + chunk.delta,
+          };
+          return copy;
+        });
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Something went wrong.";
+      setMessages((prev) => {
+        const copy = [...prev];
+        copy[copy.length - 1] = { role: "assistant", content: `_${msg}_` };
+        return copy;
+      });
+    } finally {
+      setStreaming(false);
+    }
+  }
+
+  function newConversation() {
+    setMessages([]);
+    setInput("");
+  }
+
   return (
     <div className="p-6 lg:p-8">
       <PageHeader
         eyebrow="Wilson AI"
         title="Ministry-trained intelligence."
-        subtitle="Wilson surfaces insights, drafts profile sections, and powers the cinematic presentation builder — using only approved source materials."
+        subtitle="Ask Wilson about candidates, draft profile sections, or get research direction. Source-grounded by your team."
       />
-      <DarkCard className="p-10">
-        <div className="flex items-start gap-8">
-          <WilsonMark className="h-24 w-28 text-[color:var(--gold)]" />
-          <div className="flex-1">
-            <div className="flex items-center gap-2 text-[color:var(--gold)]">
-              <Sparkles className="h-4 w-4" />
-              <span className="text-xs uppercase tracking-[0.2em]">
-                Wilson workspace
-              </span>
+
+      <DarkCard className="overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
+          <div className="flex items-center gap-3">
+            <WilsonMark className="h-9 w-11 text-[color:var(--gold)]" />
+            <div>
+              <div className="text-sm font-semibold text-white">Wilson</div>
+              <div className="text-xs text-white/45">
+                google/gemini-2.5-flash · streaming
+              </div>
             </div>
-            <h2 className="mt-4 font-serif text-3xl">Coming online soon.</h2>
-            <p className="mt-3 max-w-2xl text-white/55">
-              The Wilson chat surface, prompt library, and source-grounded
-              profile generation hook into Lovable AI Gateway. This panel will
-              host threaded conversations scoped to each candidate or
-              presentation.
-            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={candidateId} onValueChange={setCandidateId}>
+              <SelectTrigger className="h-9 w-[240px] border-white/15 bg-white/[0.06] text-xs text-white">
+                <SelectValue placeholder="Optional candidate context" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">No candidate</SelectItem>
+                {(candidates ?? []).map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={newConversation}
+              className="border-white/20 bg-transparent text-white hover:bg-white/10"
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              New
+            </Button>
+          </div>
+        </div>
+
+        <div
+          ref={scrollRef}
+          className="h-[520px] overflow-y-auto bg-[color:var(--deep)] p-6"
+        >
+          {messages.length === 0 ? (
+            <div className="grid h-full place-items-center text-center">
+              <div>
+                <Sparkles className="mx-auto h-8 w-8 text-[color:var(--gold)]" />
+                <h3 className="mt-3 font-serif text-2xl text-white">
+                  How can Wilson help?
+                </h3>
+                <p className="mt-2 max-w-md text-sm text-white/45">
+                  Ask for a draft Story section, brainstorm interview
+                  questions, or summarize a candidate's track record.
+                </p>
+                <div className="mt-6 flex flex-wrap justify-center gap-2">
+                  {[
+                    "Draft a Leadership Profile section",
+                    "Suggest 5 reference-check questions",
+                    "Compare two candidates for a worship pastor role",
+                  ].map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setInput(s)}
+                      className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/70 transition hover:border-[color:var(--gold)]/60 hover:text-white"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {messages.map((m, i) => (
+                <div
+                  key={i}
+                  className={
+                    m.role === "user"
+                      ? "ml-auto max-w-[80%] rounded-2xl bg-[color:var(--gold)]/15 px-4 py-3 text-sm text-white"
+                      : "mr-auto max-w-[85%] rounded-2xl bg-white/[0.06] px-4 py-3 text-sm text-white/90"
+                  }
+                >
+                  <div className="prose prose-sm prose-invert max-w-none">
+                    <ReactMarkdown>
+                      {m.content || (streaming && i === messages.length - 1 ? "…" : "")}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-white/10 bg-[color:var(--deep)] p-4">
+          <div className="flex items-end gap-2">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+              placeholder="Ask Wilson… (Enter to send, Shift+Enter for newline)"
+              className="min-h-[60px] resize-none border-white/15 bg-white/[0.06] text-white placeholder:text-white/30"
+              disabled={streaming}
+            />
+            <Button
+              onClick={send}
+              disabled={streaming || !input.trim()}
+              className="h-[60px] bg-[color:var(--gold)] text-[color:var(--deep)] hover:bg-[color:var(--gold)]/90"
+            >
+              <ArrowUp className="h-5 w-5" />
+            </Button>
           </div>
         </div>
       </DarkCard>
