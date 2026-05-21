@@ -20,7 +20,7 @@ function ProfileBuilderIndex() {
   const list = useServerFn(listCandidates);
   const { data, isLoading } = useQuery({
     queryKey: ["candidates"],
-    queryFn: () => list({ data: {} as never }),
+    queryFn: () => list(),
   });
 
   return (
