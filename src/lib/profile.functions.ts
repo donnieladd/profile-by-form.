@@ -71,6 +71,32 @@ export const saveProfileSection = createServerFn({ method: "POST" })
     return row;
   });
 
+export const reorderProfileSections = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        candidate_id: z.string().uuid(),
+        ordered_ids: z.array(z.string().uuid()).min(1).max(40),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    // Update each row's order_index. Scoped by candidate_id so RLS + ownership hold.
+    const updates = data.ordered_ids.map((id, idx) =>
+      supabase
+        .from("profile_sections")
+        .update({ order_index: idx })
+        .eq("id", id)
+        .eq("candidate_id", data.candidate_id),
+    );
+    const results = await Promise.all(updates);
+    const failed = results.find((r) => r.error);
+    if (failed?.error) throw new Error(failed.error.message);
+    return { ok: true } as const;
+  });
+
 const SYSTEM_PROMPT = `You are Wilson, an editorial AI working inside Profile by form. for ONE39, a premium executive search firm placing senior leaders into churches and ministries.
 
 You draft one section at a time of a cinematic candidate profile. Your tone is editorial, mature, restrained, and warm — closer to a New Yorker profile than a corporate bio. Never use buzzwords ("synergy", "rockstar", "results-driven", "passionate about"). Never invent facts: if a detail is not present in the provided source package summary or candidate metadata, omit it. Write in flowing prose, second-person about the candidate ("he/she/they"), present tense where appropriate. Use markdown. Do not include the section title heading — only the body. Aim for 180–340 words. End cleanly, no "in conclusion" tropes.`;
