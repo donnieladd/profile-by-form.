@@ -94,7 +94,6 @@ function PresentationsPage() {
                 key={c.id}
                 to="/candidates/$candidateId"
                 params={{ candidateId: c.id }}
-                search={{ tab: "presentation" } as never}
                 className="group"
               >
                 <ShellCard className="h-full p-6 transition hover:border-[color:var(--gold)]/40 hover:shadow-lg">
