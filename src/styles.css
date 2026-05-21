@@ -144,3 +144,33 @@
   }
   .font-serif { font-family: var(--font-serif); }
 }
+
+@layer components {
+  .prose-editorial {
+    font-family: var(--font-serif);
+    color: color-mix(in oklab, var(--foreground) 85%, transparent);
+    font-size: 15px;
+    line-height: 1.85;
+  }
+  .prose-editorial p { margin: 0 0 1.1em; }
+  .prose-editorial h1, .prose-editorial h2, .prose-editorial h3 {
+    font-family: var(--font-serif);
+    letter-spacing: -0.02em;
+    color: var(--foreground);
+    margin: 1.4em 0 0.5em;
+  }
+  .prose-editorial h1 { font-size: 1.9rem; }
+  .prose-editorial h2 { font-size: 1.5rem; }
+  .prose-editorial h3 { font-size: 1.2rem; }
+  .prose-editorial em { font-style: italic; color: color-mix(in oklab, var(--foreground) 70%, transparent); }
+  .prose-editorial strong { color: var(--foreground); font-weight: 600; }
+  .prose-editorial ul, .prose-editorial ol { margin: 0 0 1.1em 1.2em; }
+  .prose-editorial li { margin: 0.25em 0; }
+  .prose-editorial blockquote {
+    border-left: 2px solid var(--gold);
+    padding-left: 1em;
+    color: color-mix(in oklab, var(--foreground) 65%, transparent);
+    font-style: italic;
+    margin: 1.1em 0;
+  }
+}
