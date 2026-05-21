@@ -21,6 +21,8 @@ import { Route as AuthenticatedPresentationsRouteImport } from './routes/_authen
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCandidatesRouteImport } from './routes/_authenticated/candidates'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedSearchesSearchIdRouteImport } from './routes/_authenticated/searches.$searchId'
+import { Route as AuthenticatedCandidatesCandidateIdRouteImport } from './routes/_authenticated/candidates.$candidateId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -83,32 +85,48 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedSearchesSearchIdRoute =
+  AuthenticatedSearchesSearchIdRouteImport.update({
+    id: '/$searchId',
+    path: '/$searchId',
+    getParentRoute: () => AuthenticatedSearchesRoute,
+  } as any)
+const AuthenticatedCandidatesCandidateIdRoute =
+  AuthenticatedCandidatesCandidateIdRouteImport.update({
+    id: '/$candidateId',
+    path: '/$candidateId',
+    getParentRoute: () => AuthenticatedCandidatesRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/admin': typeof AuthenticatedAdminRoute
-  '/candidates': typeof AuthenticatedCandidatesRoute
+  '/candidates': typeof AuthenticatedCandidatesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/presentations': typeof AuthenticatedPresentationsRoute
   '/profile-builder': typeof AuthenticatedProfileBuilderRoute
-  '/searches': typeof AuthenticatedSearchesRoute
+  '/searches': typeof AuthenticatedSearchesRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/source': typeof AuthenticatedSourceRoute
   '/wilson': typeof AuthenticatedWilsonRoute
+  '/candidates/$candidateId': typeof AuthenticatedCandidatesCandidateIdRoute
+  '/searches/$searchId': typeof AuthenticatedSearchesSearchIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/admin': typeof AuthenticatedAdminRoute
-  '/candidates': typeof AuthenticatedCandidatesRoute
+  '/candidates': typeof AuthenticatedCandidatesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/presentations': typeof AuthenticatedPresentationsRoute
   '/profile-builder': typeof AuthenticatedProfileBuilderRoute
-  '/searches': typeof AuthenticatedSearchesRoute
+  '/searches': typeof AuthenticatedSearchesRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/source': typeof AuthenticatedSourceRoute
   '/wilson': typeof AuthenticatedWilsonRoute
+  '/candidates/$candidateId': typeof AuthenticatedCandidatesCandidateIdRoute
+  '/searches/$searchId': typeof AuthenticatedSearchesSearchIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -116,14 +134,16 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
-  '/_authenticated/candidates': typeof AuthenticatedCandidatesRoute
+  '/_authenticated/candidates': typeof AuthenticatedCandidatesRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/presentations': typeof AuthenticatedPresentationsRoute
   '/_authenticated/profile-builder': typeof AuthenticatedProfileBuilderRoute
-  '/_authenticated/searches': typeof AuthenticatedSearchesRoute
+  '/_authenticated/searches': typeof AuthenticatedSearchesRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/source': typeof AuthenticatedSourceRoute
   '/_authenticated/wilson': typeof AuthenticatedWilsonRoute
+  '/_authenticated/candidates/$candidateId': typeof AuthenticatedCandidatesCandidateIdRoute
+  '/_authenticated/searches/$searchId': typeof AuthenticatedSearchesSearchIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -139,6 +159,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/source'
     | '/wilson'
+    | '/candidates/$candidateId'
+    | '/searches/$searchId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -152,6 +174,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/source'
     | '/wilson'
+    | '/candidates/$candidateId'
+    | '/searches/$searchId'
   id:
     | '__root__'
     | '/'
@@ -166,6 +190,8 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/source'
     | '/_authenticated/wilson'
+    | '/_authenticated/candidates/$candidateId'
+    | '/_authenticated/searches/$searchId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -260,16 +286,58 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/searches/$searchId': {
+      id: '/_authenticated/searches/$searchId'
+      path: '/$searchId'
+      fullPath: '/searches/$searchId'
+      preLoaderRoute: typeof AuthenticatedSearchesSearchIdRouteImport
+      parentRoute: typeof AuthenticatedSearchesRoute
+    }
+    '/_authenticated/candidates/$candidateId': {
+      id: '/_authenticated/candidates/$candidateId'
+      path: '/$candidateId'
+      fullPath: '/candidates/$candidateId'
+      preLoaderRoute: typeof AuthenticatedCandidatesCandidateIdRouteImport
+      parentRoute: typeof AuthenticatedCandidatesRoute
+    }
   }
 }
 
+interface AuthenticatedCandidatesRouteChildren {
+  AuthenticatedCandidatesCandidateIdRoute: typeof AuthenticatedCandidatesCandidateIdRoute
+}
+
+const AuthenticatedCandidatesRouteChildren: AuthenticatedCandidatesRouteChildren =
+  {
+    AuthenticatedCandidatesCandidateIdRoute:
+      AuthenticatedCandidatesCandidateIdRoute,
+  }
+
+const AuthenticatedCandidatesRouteWithChildren =
+  AuthenticatedCandidatesRoute._addFileChildren(
+    AuthenticatedCandidatesRouteChildren,
+  )
+
+interface AuthenticatedSearchesRouteChildren {
+  AuthenticatedSearchesSearchIdRoute: typeof AuthenticatedSearchesSearchIdRoute
+}
+
+const AuthenticatedSearchesRouteChildren: AuthenticatedSearchesRouteChildren = {
+  AuthenticatedSearchesSearchIdRoute: AuthenticatedSearchesSearchIdRoute,
+}
+
+const AuthenticatedSearchesRouteWithChildren =
+  AuthenticatedSearchesRoute._addFileChildren(
+    AuthenticatedSearchesRouteChildren,
+  )
+
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
-  AuthenticatedCandidatesRoute: typeof AuthenticatedCandidatesRoute
+  AuthenticatedCandidatesRoute: typeof AuthenticatedCandidatesRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPresentationsRoute: typeof AuthenticatedPresentationsRoute
   AuthenticatedProfileBuilderRoute: typeof AuthenticatedProfileBuilderRoute
-  AuthenticatedSearchesRoute: typeof AuthenticatedSearchesRoute
+  AuthenticatedSearchesRoute: typeof AuthenticatedSearchesRouteWithChildren
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedSourceRoute: typeof AuthenticatedSourceRoute
   AuthenticatedWilsonRoute: typeof AuthenticatedWilsonRoute
@@ -277,11 +345,11 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
-  AuthenticatedCandidatesRoute: AuthenticatedCandidatesRoute,
+  AuthenticatedCandidatesRoute: AuthenticatedCandidatesRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPresentationsRoute: AuthenticatedPresentationsRoute,
   AuthenticatedProfileBuilderRoute: AuthenticatedProfileBuilderRoute,
-  AuthenticatedSearchesRoute: AuthenticatedSearchesRoute,
+  AuthenticatedSearchesRoute: AuthenticatedSearchesRouteWithChildren,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedSourceRoute: AuthenticatedSourceRoute,
   AuthenticatedWilsonRoute: AuthenticatedWilsonRoute,
