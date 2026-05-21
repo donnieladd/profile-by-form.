@@ -217,32 +217,65 @@ function ProfileBuilderForCandidate() {
         <ShellCard className="xl:col-span-3 p-5">
           <Pill>Sections</Pill>
           <div className="mt-5 space-y-2">
-            {(sections as SectionRow[] | undefined)?.map((s, i) => {
+            {(sections as SectionRow[] | undefined)?.map((s, i, arr) => {
               const isActive = active?.id === s.id;
               return (
-                <button
+                <div
                   key={s.id}
-                  onClick={() => {
-                    setActiveId(s.id);
-                    setDraft(s.body_md ?? "");
-                    lastSyncedRef.current = s.id;
-                  }}
-                  className={`block w-full rounded-2xl border p-3 text-left transition ${
+                  className={`group rounded-2xl border p-3 transition ${
                     isActive
                       ? "border-[color:var(--gold)]/60 bg-[color:var(--gold)]/8"
                       : "border-foreground/10 bg-card hover:border-foreground/25"
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/35">
-                      {String(i + 1).padStart(2, "0")}
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveId(s.id);
+                        setDraft(s.body_md ?? "");
+                        lastSyncedRef.current = s.id;
+                      }}
+                      className="flex flex-1 items-center gap-2 text-left"
+                    >
+                      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/35">
+                        {String(i + 1).padStart(2, "0")}
+                      </div>
+                      <StatusPill status={s.status} />
+                    </button>
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        type="button"
+                        aria-label="Move section up"
+                        disabled={i === 0 || reorderMut.isPending}
+                        onClick={() => moveSection(s.id, -1)}
+                        className="rounded-md p-1 text-foreground/45 hover:bg-foreground/5 hover:text-foreground disabled:opacity-30"
+                      >
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Move section down"
+                        disabled={i === arr.length - 1 || reorderMut.isPending}
+                        onClick={() => moveSection(s.id, 1)}
+                        className="rounded-md p-1 text-foreground/45 hover:bg-foreground/5 hover:text-foreground disabled:opacity-30"
+                      >
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </button>
                     </div>
-                    <StatusPill status={s.status} />
                   </div>
-                  <div className="mt-1 text-sm font-medium leading-snug">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveId(s.id);
+                      setDraft(s.body_md ?? "");
+                      lastSyncedRef.current = s.id;
+                    }}
+                    className="mt-1 block w-full text-left text-sm font-medium leading-snug"
+                  >
                     {s.title}
-                  </div>
-                </button>
+                  </button>
+                </div>
               );
             })}
           </div>
