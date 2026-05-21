@@ -4,6 +4,8 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
+  ArrowDown,
+  ArrowUp,
   CheckCircle2,
   Eye,
   PencilLine,
@@ -20,6 +22,7 @@ import { getCandidate } from "@/lib/candidates.functions";
 import {
   generateProfileSection,
   listProfileSections,
+  reorderProfileSections,
   saveProfileSection,
 } from "@/lib/profile.functions";
 
