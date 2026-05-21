@@ -7,8 +7,10 @@ import {
   CheckCircle2,
   Circle,
   Download,
+  Printer,
   Trash2,
   Upload,
+
 } from "lucide-react";
 import { toast } from "sonner";
 
