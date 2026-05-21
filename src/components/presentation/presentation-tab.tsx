@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Download, Printer } from "lucide-react";
+import { Copy, Download, Link as LinkIcon, Printer, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
 import { ShellCard } from "@/components/brand/brand";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import {
   type PresentationCandidate,
 } from "@/components/presentation/cinematic-presentation";
 import { listProfileSections } from "@/lib/profile.functions";
+import { createOrRefreshShareLink } from "@/lib/presentations.functions";
 
 export function PresentationTab({
   candidateId,
@@ -20,12 +22,26 @@ export function PresentationTab({
   candidate: PresentationCandidate;
 }) {
   const list = useServerFn(listProfileSections);
+  const shareFn = useServerFn(createOrRefreshShareLink);
+  const qc = useQueryClient();
   const { data: sections, isLoading } = useQuery({
     queryKey: ["profile-sections", candidateId],
     queryFn: () => list({ data: { candidate_id: candidateId } }),
   });
 
   const [showCover, setShowCover] = useState(true);
+
+  const shareMut = useMutation({
+    mutationFn: (v: { regenerate?: boolean }) =>
+      shareFn({ data: { candidate_id: candidateId, regenerate: v.regenerate } }),
+    onSuccess: (res) => {
+      const url = `${window.location.origin}/p/${res.share_slug}`;
+      navigator.clipboard.writeText(url).catch(() => {});
+      toast.success("Share link copied to clipboard");
+      qc.invalidateQueries({ queryKey: ["presentation-candidates"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
 
   if (isLoading)
     return <div className="text-sm text-foreground/45">Loading…</div>;
@@ -78,6 +94,32 @@ export function PresentationTab({
               Cover page
             </span>
           </label>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => shareMut.mutate({ regenerate: false })}
+            disabled={shareMut.isPending}
+          >
+            <LinkIcon className="mr-1.5 h-3.5 w-3.5" />
+            {shareMut.data?.share_slug ? (
+              <>
+                <Copy className="mr-1 h-3 w-3" />
+                Copy share link
+              </>
+            ) : (
+              "Create share link"
+            )}
+          </Button>
+          {shareMut.data?.share_slug && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => shareMut.mutate({ regenerate: true })}
+              title="Regenerate share link"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Printer className="mr-1.5 h-3.5 w-3.5" />
             Print

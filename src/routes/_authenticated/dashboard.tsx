@@ -1,4 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   BriefcaseBusiness,
   FileText,
@@ -11,11 +13,15 @@ import {
   DarkCard,
   Pill,
   ShellCard,
-  Stat,
   WilsonMark,
 } from "@/components/brand/brand";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  getDashboardStats,
+  getRecentActivity,
+  getRecentSearches,
+} from "@/lib/dashboard.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -27,26 +33,48 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
 });
 
-const stats = [
-  { label: "Active searches", value: "8", hint: "2 new updates", icon: BriefcaseBusiness },
-  { label: "Candidates", value: "47", hint: "5 new this week", icon: Users },
-  { label: "Profiles in progress", value: "15", hint: "3 pending review", icon: FileText },
-  { label: "Presentations ready", value: "6", hint: "2 ready to present", icon: Presentation },
-];
-
-const recentSearches = [
-  { church: "Faith Chapel", role: "Worship Pastor", city: "Orange County, CA", status: "Active", ready: 5 },
-  { church: "Mission Hills Church", role: "Creative Director", city: "San Diego, CA", status: "Shortlisting", ready: 6 },
-  { church: "Grace Community", role: "Production Director", city: "Austin, TX", status: "Evaluating", ready: 3 },
-  { church: "Elevation Church", role: "Worship Pastor", city: "Charlotte, NC", status: "Active", ready: 7 },
-];
-
 function DashboardPage() {
   const { user } = useAuth();
+  const statsFn = useServerFn(getDashboardStats);
+  const searchesFn = useServerFn(getRecentSearches);
+  const activityFn = useServerFn(getRecentActivity);
+
+  const { data: stats } = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: () => statsFn(),
+  });
+  const { data: recent } = useQuery({
+    queryKey: ["dashboard-recent-searches"],
+    queryFn: () => searchesFn(),
+  });
+  const { data: activity } = useQuery({
+    queryKey: ["dashboard-activity"],
+    queryFn: () => activityFn(),
+  });
+
   const name =
     user?.user_metadata?.full_name?.split(" ")[0] ??
     user?.email?.split("@")[0] ??
     "there";
+
+  const cards = [
+    {
+      label: "Active searches",
+      value: stats?.activeSearches ?? 0,
+      icon: BriefcaseBusiness,
+    },
+    { label: "Candidates", value: stats?.candidates ?? 0, icon: Users },
+    {
+      label: "Profiles in progress",
+      value: stats?.profilesInProgress ?? 0,
+      icon: FileText,
+    },
+    {
+      label: "Presentations ready",
+      value: stats?.presentationsReady ?? 0,
+      icon: Presentation,
+    },
+  ];
 
   return (
     <div className="p-6 lg:p-8">
@@ -62,7 +90,7 @@ function DashboardPage() {
       </div>
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {stats.map((s) => (
+        {cards.map((s) => (
           <ShellCard key={s.label} className="p-6">
             <div className="flex items-center gap-5">
               <div className="grid h-14 w-14 place-items-center rounded-full bg-[color:var(--gold)]/12 text-[color:var(--gold-deep)]">
@@ -73,7 +101,6 @@ function DashboardPage() {
                   {s.value}
                 </div>
                 <div className="text-sm font-semibold">{s.label}</div>
-                <div className="mt-1 text-xs text-foreground/40">{s.hint}</div>
               </div>
             </div>
           </ShellCard>
@@ -85,13 +112,10 @@ function DashboardPage() {
           <div className="border-b border-foreground/10 bg-[color:var(--soft)] p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <Pill>ONE39 beta workspace</Pill>
+                <Pill>Recent activity</Pill>
                 <h3 className="mt-4 font-serif text-2xl tracking-tight">
                   Active searches
                 </h3>
-                <p className="mt-1 text-sm text-foreground/45">
-                  Pull from Monday.com or create a manual search.
-                </p>
               </div>
               <Button asChild variant="default">
                 <Link to="/searches">View all searches →</Link>
@@ -99,29 +123,34 @@ function DashboardPage() {
             </div>
           </div>
           <div className="divide-y divide-foreground/10">
-            {recentSearches.map((s) => (
-              <div
-                key={s.church}
-                className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center"
+            {(recent ?? []).length === 0 && (
+              <div className="p-8 text-center text-sm text-foreground/45">
+                No searches yet.{" "}
+                <Link to="/searches" className="underline">
+                  Create your first search
+                </Link>
+                .
+              </div>
+            )}
+            {(recent ?? []).map((s) => (
+              <Link
+                key={s.id}
+                to="/searches/$searchId"
+                params={{ searchId: s.id }}
+                className="grid gap-4 p-5 transition hover:bg-foreground/[0.03] md:grid-cols-[1fr_auto] md:items-center"
               >
                 <div>
                   <div className="text-base font-medium">{s.church}</div>
                   <div className="mt-1 text-sm text-foreground/45">
-                    {s.role} · {s.city} · {s.ready} ready to present
+                    {s.role}
+                    {s.city ? ` · ${s.city}` : ""} · {s.candidateCount}{" "}
+                    candidate{s.candidateCount === 1 ? "" : "s"}
                   </div>
                 </div>
-                <Pill
-                  tone={
-                    s.status === "Active"
-                      ? "green"
-                      : s.status === "Shortlisting"
-                        ? "blue"
-                        : "gold"
-                  }
-                >
-                  {s.status}
+                <Pill tone={s.status === "placed" ? "green" : "gold"}>
+                  {s.stage}
                 </Pill>
-              </div>
+              </Link>
             ))}
           </div>
         </ShellCard>
@@ -130,30 +159,16 @@ function DashboardPage() {
           <div className="flex items-center gap-2 text-[color:var(--gold)]">
             <Sparkles className="h-4 w-4" />
             <span className="text-xs uppercase tracking-[0.2em]">
-              Wilson status
+              Wilson AI
             </span>
           </div>
           <h3 className="mt-5 font-serif text-2xl tracking-tight">
-            AI assistant for ONE39
+            Your research assistant
           </h3>
           <p className="mt-2 text-sm leading-6 text-white/45">
-            Wilson powers candidate synthesis, profile edits, source checks, and
-            presentation section generation.
+            Wilson powers candidate synthesis, profile section drafting, and
+            source-grounded review.
           </p>
-          <div className="mt-6 space-y-3">
-            <div className="rounded-2xl bg-white/[0.06] p-4">
-              <div className="text-sm">Profile generation ready</div>
-              <div className="mt-1 text-xs text-white/40">
-                Source-only rule active
-              </div>
-            </div>
-            <div className="rounded-2xl bg-white/[0.06] p-4">
-              <div className="text-sm">Presentation editor ready</div>
-              <div className="mt-1 text-xs text-white/40">
-                One39 v1 template baseline
-              </div>
-            </div>
-          </div>
           <Button
             asChild
             variant="secondary"
@@ -161,6 +176,30 @@ function DashboardPage() {
           >
             <Link to="/wilson">Open Wilson</Link>
           </Button>
+          <div className="mt-6">
+            <div className="text-xs uppercase tracking-[0.18em] text-white/40">
+              Recent activity
+            </div>
+            <div className="mt-3 space-y-2">
+              {(activity ?? []).slice(0, 5).map((a) => (
+                <div
+                  key={a.id}
+                  className="rounded-xl bg-white/[0.05] p-3 text-xs text-white/65"
+                >
+                  <div className="font-medium text-white/90">{a.action}</div>
+                  <div className="text-white/40">
+                    {a.actor_name ?? "Member"} ·{" "}
+                    {new Date(a.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+              {(activity ?? []).length === 0 && (
+                <div className="text-xs text-white/35">
+                  No activity yet.
+                </div>
+              )}
+            </div>
+          </div>
         </DarkCard>
       </div>
 
@@ -169,14 +208,18 @@ function DashboardPage() {
           <div className="flex items-start gap-5 rounded-2xl border border-[color:var(--gold)]/25 bg-[color:var(--gold)]/8 p-5">
             <WilsonMark className="h-20 w-20 shrink-0 text-[color:var(--gold-deep)]" />
             <div>
-              <div className="font-semibold">Wilson AI</div>
+              <div className="font-semibold">Wilson is ready</div>
               <p className="mt-2 text-sm leading-6 text-foreground/60">
-                I've reviewed 12 new profiles that match your active searches.
-                Want me to prioritize the top matches?
+                Generate a candidate's executive profile from their approved
+                source package — Wilson will draft each section for review.
               </p>
               <div className="mt-4 flex gap-3">
-                <Button>Review matches</Button>
-                <Button variant="outline">Ask Wilson</Button>
+                <Button asChild>
+                  <Link to="/candidates">Open candidates</Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link to="/wilson">Ask Wilson</Link>
+                </Button>
               </div>
             </div>
           </div>
@@ -185,6 +228,3 @@ function DashboardPage() {
     </div>
   );
 }
-
-// Used as a sub-stat label
-void Stat;

@@ -1,84 +1,60 @@
-# Phase 2 — Searches, Candidates & Source Package (Real CRUD)
+## Goal
+Replace all remaining stubs/mocks with real, working features so the app is end-to-end functional.
 
-Replace the mock data in the AppShell sub-pages with real data backed by Lovable Cloud, using TanStack `createServerFn` + React Query. Keep the editorial UI exactly as designed in Phase 1.
+## Scope (5 areas)
 
-## Scope
+### 1. Dashboard — real data
+`src/routes/_authenticated/dashboard.tsx`
+- New server fn `getDashboardStats` returning: active searches, candidates in flight, presentations sent, approvals pending.
+- New server fn `getRecentSearches` (last 5 with stage + candidate count).
+- New server fn `getRecentActivity` from `audit_log` (last 10 entries with actor name).
+- Wire via `useQuery`; remove hardcoded values.
 
-1. **Searches** — list, create, view, update stage/status
-2. **Candidates** — list, create, view, link to a search, update stage
-3. **Source Package** — per-candidate intake checklist + file uploads to `source-files` bucket
-4. **Shared infrastructure** — server-fn modules, Zod schemas, query keys, toast feedback
+### 2. Presentations hub — real data
+`src/routes/_authenticated/presentations.tsx`
+- New server fn `listPresentations` joining `presentations` + `candidates` + `searches`.
+- Grid of cards (candidate name, search/role, status badge, updated_at, link to `/candidates/$id?tab=presentation`).
+- Filters: status (draft/approved/sent), search-by-candidate.
+- Remove mocked "Shemyah Wilson" data.
 
-Explicitly **out of scope** for this phase: Wilson AI streaming, profile-section builder UI, presentation rendering, public `/p/$shareId`, admin role management. Those remain Phase 3+.
+### 3. Wilson chat — working AI assistant
+`src/routes/_authenticated/wilson.tsx`
+- New streaming server fn `streamWilsonChat` (Lovable AI gateway, `google/gemini-2.5-flash`, async generator pattern from server-functions knowledge).
+- System prompt frames Wilson as an executive-search research assistant with context about the firm's workflow.
+- Optional candidate context selector (pick a candidate → injects their source-package summary into the prompt).
+- Chat UI: message list, streaming assistant bubbles, input box, new-conversation button. In-memory per-session (no persistence this round).
 
-## Server functions (new files)
+### 4. Admin / team roles
+`src/routes/_authenticated/admin.tsx`
+- Gate behind `has_role('admin' | 'owner')` (server-fn check; redirect otherwise).
+- New server fns: `listTeamMembers` (join `profiles` + `user_roles`), `updateUserRole`, `inviteTeamMember` (uses `supabaseAdmin.auth.admin.inviteUserByEmail`).
+- Table: name, email, role dropdown (consultant/admin/owner), invite button, audit trail link.
 
-```
-src/lib/
-  searches.functions.ts      # listSearches, getSearch, createSearch, updateSearch
-  candidates.functions.ts    # listCandidates, getCandidate, createCandidate,
-                             #   updateCandidate, linkCandidateToSearch,
-                             #   updateSearchStage
-  source.functions.ts        # listSourceItems, createSourceItem,
-                             #   updateSourceItemStatus, deleteSourceItem,
-                             #   createSignedUploadUrl, createSignedDownloadUrl
-  schemas.ts                 # shared Zod schemas (client-safe)
-```
+### 5. Public share links
+- New route `src/routes/p.$shareSlug.tsx` (public, no auth).
+- New public server fn `getPublicPresentation` using `supabaseAdmin`, scoped strictly by `share_slug` + `status='approved'`, returning only safe fields.
+- Optional access-code gate (`access_code` field on presentation).
+- Renders `CinematicPresentation` read-only (no edit, no print watermark when approved).
+- Add "Copy share link" + "Regenerate slug" actions in `PresentationTab`.
+- Server fn `createShareLink` (generates random slug, sets status).
 
-All protected by `requireSupabaseAuth`; reads/writes go through the user-scoped Supabase client so RLS applies. Storage uploads use `createSignedUploadUrl` so the browser PUTs directly to the `source-files` bucket without exposing the service role.
+### 6. Global search (⌘K)
+`src/components/app-shell.tsx`
+- shadcn `CommandDialog` opened by ⌘K / Ctrl+K.
+- New server fn `globalSearch(q)` → searches candidates (name/email/org), searches (church/role), presentations (title).
+- Grouped results; each item navigates to its detail route.
 
-## Routes refactor (existing files)
+## Out of scope
+- Email delivery of share links (just copy-to-clipboard).
+- Wilson chat persistence to DB.
+- Realtime presence on admin page.
 
-- `_authenticated/searches.tsx` → real list + "New search" dialog (church, role, city, reports_to, church_size, compensation, summary). Row click → `/searches/$searchId`.
-- `_authenticated/searches.$searchId.tsx` *(new)* → search detail: header, stage stepper (intake → sourcing → screening → presentation → finalist → placed), linked candidates table, "Add candidate" picker.
-- `_authenticated/candidates.tsx` → real list with status filter + "New candidate" dialog.
-- `_authenticated/candidates.$candidateId.tsx` *(new)* → candidate detail with tabs: **Overview**, **Source Package**, **Profile** (stub), **Presentation** (stub).
-- `_authenticated/source.tsx` → redirects to candidates list (per-candidate source lives under the candidate detail tab); keep as an index that lists candidates needing source items.
+## Order of implementation
+1. Dashboard stats (smallest, validates server-fn pattern)
+2. Presentations hub
+3. Global search (⌘K)
+4. Public share links
+5. Wilson streaming chat
+6. Admin team management
 
-Pattern for each protected route: `beforeLoad` calls `supabase.auth.getUser()` (already in `_authenticated.tsx` parent — verify), then `loader` uses `queryClient.ensureQueryData(queryOptions)` and component uses `useSuspenseQuery`.
-
-## Data shapes & defaults
-
-- New search → `stage: 'intake'`, `status: 'planning'`, `launched_at: today`.
-- New candidate → `status: 'new'`, `created_by: auth.uid()`.
-- Linking candidate to search → insert into `search_candidates` with `stage: 'sourcing'`.
-- Default source-item checklist seeded on first visit per candidate: Resume, LinkedIn URL, Doctrinal statement, References, Theology questionnaire, Family/spouse note, Photo (each `status: 'needed'`).
-
-## File uploads
-
-`source-files` bucket is private. Flow:
-1. Client requests `createSignedUploadUrl({ candidateId, fileName, contentType })`.
-2. Server function validates membership + returns signed PUT URL + `storage_path` = `candidates/{candidateId}/{uuid}-{safeName}`.
-3. Client PUTs file → calls `createSourceItem` with the returned `storage_path`.
-4. Download via `createSignedDownloadUrl({ sourceItemId })` (5-min expiry).
-
-Add storage RLS policies in a migration so `is_team_member(auth.uid())` controls read/write on the `source-files` bucket (currently no storage policies exist).
-
-## React Query conventions
-
-- Query keys: `['searches']`, `['search', id]`, `['candidates', filters]`, `['candidate', id]`, `['source', candidateId]`.
-- Mutations invalidate the matching list + detail keys; success/error via `sonner` toast.
-
-## Migrations needed
-
-One migration:
-- Storage policies for `source-files` (select/insert/update/delete gated by `is_team_member(auth.uid())`).
-- Helpful indexes: `search_candidates(search_id)`, `search_candidates(candidate_id)`, `source_items(candidate_id)`, `candidates(status)`, `searches(stage, status)`.
-
-No schema/column changes — Phase 1 tables already cover this.
-
-## Acceptance
-
-- Create a search → it appears in the list and detail loads.
-- Create a candidate, link to a search → shows in search detail and candidate's search column.
-- Upload a file to a candidate's source item → status flips to `received`, download link works, file is gated by RLS.
-- All pages keep the Phase 1 Paper/Ink/Gold visual language; no `<Spinner>` flashes during navigation (Suspense + skeletons).
-
-## Build order
-
-1. `schemas.ts` + `searches.functions.ts` + searches list/detail + create dialog
-2. `candidates.functions.ts` + candidates list/detail + create dialog + link-to-search
-3. Storage policies migration + `source.functions.ts` + source-package tab with upload
-4. QA pass against acceptance checklist
-
-Proceed?
+I'll create one migration if needed (only for `presentations.access_code` defaults or indexes — schema already has the columns). No destructive changes.
