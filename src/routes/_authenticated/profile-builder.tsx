@@ -1,8 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Edit3, Eye, Image as ImageIcon, Sparkles, Wand2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { ArrowRight, Sparkles } from "lucide-react";
 
-import { DarkCard, PageHeader, Pill, ShellCard } from "@/components/brand/brand";
-import { Button } from "@/components/ui/button";
+import { PageHeader, Pill, ShellCard } from "@/components/brand/brand";
+import { listCandidates } from "@/lib/candidates.functions";
 
 export const Route = createFileRoute("/_authenticated/profile-builder")({
   head: () => ({
@@ -11,117 +13,67 @@ export const Route = createFileRoute("/_authenticated/profile-builder")({
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),
-  component: ProfileBuilderPage,
+  component: ProfileBuilderIndex,
 });
 
-const sections = [
-  "Personal background & faith journey",
-  "Ministry & leadership journey",
-  "Family & spouse profile",
-  "Strengths & leadership qualities",
-  "Growth areas & considerations",
-  "Final assessment & readiness summary",
-];
+function ProfileBuilderIndex() {
+  const list = useServerFn(listCandidates);
+  const { data, isLoading } = useQuery({
+    queryKey: ["candidates"],
+    queryFn: () => list({ data: {} as never }),
+  });
 
-function ProfileBuilderPage() {
   return (
     <div className="p-6 lg:p-8">
       <PageHeader
         eyebrow="Profile builder"
-        title="Build the candidate narrative."
-        subtitle="Wilson edits only from approved source materials — never invents facts."
+        title="Choose a candidate to shape."
+        subtitle="Open a candidate to draft, refine, and preview the executive narrative with Wilson."
       />
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
-        <ShellCard className="xl:col-span-3 p-5">
-          <Pill>Sections</Pill>
-          <div className="mt-5 space-y-2">
-            {sections.map((s, i) => (
-              <div
-                key={s}
-                className={`rounded-2xl border p-3 ${
-                  i === 0
-                    ? "border-[color:var(--gold)]/50 bg-[color:var(--gold)]/8"
-                    : "border-foreground/10 bg-card"
-                }`}
-              >
-                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/30">
-                  {String(i + 1).padStart(2, "0")}
-                </div>
-                <div className="mt-1 text-sm font-medium">{s}</div>
-              </div>
-            ))}
-          </div>
+      {isLoading ? (
+        <p className="text-sm text-foreground/45">Loading candidates…</p>
+      ) : (data ?? []).length === 0 ? (
+        <ShellCard className="p-10 text-center">
+          <h3 className="font-serif text-2xl">No candidates yet</h3>
+          <p className="mt-3 text-sm text-foreground/55">
+            Add a candidate first, then return here to build the profile.
+          </p>
+          <Link
+            to="/candidates"
+            className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--gold-deep)]"
+          >
+            Go to candidates <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
         </ShellCard>
-
-        <ShellCard className="xl:col-span-6 overflow-hidden">
-          <div className="border-b border-foreground/10 bg-[color:var(--soft)] p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--gold-deep)]">
-                  Visual document editor
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {(data ?? []).map((c) => (
+            <Link
+              key={c.id}
+              to="/profile-builder/$candidateId"
+              params={{ candidateId: c.id }}
+              className="group"
+            >
+              <ShellCard className="p-6 transition group-hover:border-[color:var(--gold)]/40">
+                <div className="flex items-start justify-between">
+                  <Pill tone="soft">{c.status.replace("_", " ")}</Pill>
+                  <Sparkles className="h-4 w-4 text-[color:var(--gold-deep)] opacity-0 transition group-hover:opacity-100" />
                 </div>
-                <h3 className="mt-2 font-serif text-xl">Narrative profile draft</h3>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  <Eye className="mr-2 h-3 w-3" />
-                  Preview
-                </Button>
-                <Button size="sm">Approve</Button>
-              </div>
-            </div>
-          </div>
-          <div className="p-7">
-            <div className="rounded-[28px] border border-foreground/10 bg-card p-8">
-              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[color:var(--gold-deep)]">
-                Editable section
-              </div>
-              <h4 className="mt-4 font-serif text-3xl">
-                Personal Background & Faith Journey
-              </h4>
-              <p className="mt-5 text-[15px] leading-8 text-foreground/65">
-                Shemyah Wilson is introduced first as a person: a worship
-                leader, mother, and ministry-rooted creative shaped by a family
-                environment where music, faith, and service were present from
-                her earliest years. Her story is one of formation through
-                family, worship, motherhood, resilience, and consecration.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-2">
-                <Button variant="outline" size="sm">
-                  <Edit3 className="mr-2 h-3 w-3" />
-                  Edit text
-                </Button>
-                <Button variant="outline" size="sm">
-                  <ImageIcon className="mr-2 h-3 w-3" />
-                  Add photo
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Wand2 className="mr-2 h-3 w-3" />
-                  Ask Wilson
-                </Button>
-              </div>
-            </div>
-          </div>
-        </ShellCard>
-
-        <DarkCard className="xl:col-span-3 p-5">
-          <div className="flex items-center gap-2 text-[color:var(--gold)]">
-            <Sparkles className="h-4 w-4" />
-            <span className="text-xs uppercase tracking-[0.2em]">Wilson</span>
-          </div>
-          <h3 className="mt-4 font-serif text-xl">Edit by conversation</h3>
-          <div className="mt-4 rounded-2xl bg-white/[0.06] p-4 text-sm leading-6 text-white/60">
-            "Make the faith journey warmer, but do not add anything not found in
-            the MAF or life story."
-          </div>
-          <div className="mt-4 rounded-2xl bg-[color:var(--gold)]/15 p-4 text-sm leading-6 text-[color:var(--gold)]">
-            Wilson can revise this section using only approved source material.
-          </div>
-          <div className="mt-5 rounded-full bg-white px-4 py-3 text-sm text-foreground/40">
-            Ask Wilson…
-          </div>
-        </DarkCard>
-      </div>
+                <h3 className="mt-4 font-serif text-2xl tracking-[-0.02em]">
+                  {c.full_name}
+                </h3>
+                <p className="mt-1 text-sm text-foreground/55">
+                  {c.current_title ?? "—"}
+                  {c.current_org ? ` · ${c.current_org}` : ""}
+                </p>
+                <div className="mt-5 text-[10px] uppercase tracking-[0.22em] text-foreground/45">
+                  {c.city ?? "Location TBD"} · {c.fit_role ?? "Role TBD"}
+                </div>
+              </ShellCard>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
