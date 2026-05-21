@@ -178,24 +178,60 @@
 /* Cinematic candidate presentation — print/PDF */
 @media print {
   @page { size: Letter; margin: 0; }
+  @page :first { margin: 0; }
+
   html, body {
     background: #FAF7EE !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    color-adjust: exact;
+    margin: 0 !important;
+    padding: 0 !important;
   }
+
+  /* Hide everything except the cinematic document */
   body * { visibility: hidden; }
   .cinematic-doc, .cinematic-doc * { visibility: visible; }
+
   .cinematic-doc {
     position: absolute;
     inset: 0;
     width: 100%;
+    box-shadow: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
   }
+
+  /* One physical page per cinematic section */
   .cinematic-page, .cinematic-cover {
     page-break-after: always;
     break-after: page;
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
   .cinematic-doc :is(.cinematic-page, .cinematic-cover):last-child {
     page-break-after: auto;
     break-after: auto;
   }
+
+  /* Watermark — keep visible in print without overpowering text */
+  .cinematic-watermark {
+    position: fixed !important;
+    inset: 0 !important;
+    top: 38% !important;
+    z-index: 9999 !important;
+    opacity: 0.18;
+  }
+
+  /* Don't break headings or table-of-contents rows across pages */
+  h1, h2, h3, .cinematic-doc ol > li {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Suppress UI chrome that might leak through (sidebars, nav, toasts) */
+  nav, header[role="banner"], aside, [data-sonner-toaster] {
+    display: none !important;
+  }
 }
+
