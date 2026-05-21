@@ -57,12 +57,13 @@ export const saveProfileSection = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const patch: Record<string, unknown> = { edited_by: userId };
-    if (data.body_md !== undefined) patch.body_md = data.body_md;
-    if (data.status !== undefined) patch.status = data.status;
     const { data: row, error } = await supabase
       .from("profile_sections")
-      .update(patch)
+      .update({
+        edited_by: userId,
+        ...(data.body_md !== undefined ? { body_md: data.body_md } : {}),
+        ...(data.status !== undefined ? { status: data.status } : {}),
+      })
       .eq("id", data.id)
       .select("*")
       .single();
