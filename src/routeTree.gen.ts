@@ -9,38 +9,187 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedWilsonRouteImport } from './routes/_authenticated/wilson'
+import { Route as AuthenticatedSourceRouteImport } from './routes/_authenticated/source'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedSearchesRouteImport } from './routes/_authenticated/searches'
+import { Route as AuthenticatedProfileBuilderRouteImport } from './routes/_authenticated/profile-builder'
+import { Route as AuthenticatedPresentationsRouteImport } from './routes/_authenticated/presentations'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedCandidatesRouteImport } from './routes/_authenticated/candidates'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedWilsonRoute = AuthenticatedWilsonRouteImport.update({
+  id: '/wilson',
+  path: '/wilson',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedSourceRoute = AuthenticatedSourceRouteImport.update({
+  id: '/source',
+  path: '/source',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedSearchesRoute = AuthenticatedSearchesRouteImport.update({
+  id: '/searches',
+  path: '/searches',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedProfileBuilderRoute =
+  AuthenticatedProfileBuilderRouteImport.update({
+    id: '/profile-builder',
+    path: '/profile-builder',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedPresentationsRoute =
+  AuthenticatedPresentationsRouteImport.update({
+    id: '/presentations',
+    path: '/presentations',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedCandidatesRoute = AuthenticatedCandidatesRouteImport.update({
+  id: '/candidates',
+  path: '/candidates',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/candidates': typeof AuthenticatedCandidatesRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/presentations': typeof AuthenticatedPresentationsRoute
+  '/profile-builder': typeof AuthenticatedProfileBuilderRoute
+  '/searches': typeof AuthenticatedSearchesRoute
+  '/settings': typeof AuthenticatedSettingsRoute
+  '/source': typeof AuthenticatedSourceRoute
+  '/wilson': typeof AuthenticatedWilsonRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/candidates': typeof AuthenticatedCandidatesRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/presentations': typeof AuthenticatedPresentationsRoute
+  '/profile-builder': typeof AuthenticatedProfileBuilderRoute
+  '/searches': typeof AuthenticatedSearchesRoute
+  '/settings': typeof AuthenticatedSettingsRoute
+  '/source': typeof AuthenticatedSourceRoute
+  '/wilson': typeof AuthenticatedWilsonRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/candidates': typeof AuthenticatedCandidatesRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/presentations': typeof AuthenticatedPresentationsRoute
+  '/_authenticated/profile-builder': typeof AuthenticatedProfileBuilderRoute
+  '/_authenticated/searches': typeof AuthenticatedSearchesRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/source': typeof AuthenticatedSourceRoute
+  '/_authenticated/wilson': typeof AuthenticatedWilsonRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/admin'
+    | '/candidates'
+    | '/dashboard'
+    | '/presentations'
+    | '/profile-builder'
+    | '/searches'
+    | '/settings'
+    | '/source'
+    | '/wilson'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/admin'
+    | '/candidates'
+    | '/dashboard'
+    | '/presentations'
+    | '/profile-builder'
+    | '/searches'
+    | '/settings'
+    | '/source'
+    | '/wilson'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/login'
+    | '/_authenticated/admin'
+    | '/_authenticated/candidates'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/presentations'
+    | '/_authenticated/profile-builder'
+    | '/_authenticated/searches'
+    | '/_authenticated/settings'
+    | '/_authenticated/source'
+    | '/_authenticated/wilson'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,12 +197,115 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/wilson': {
+      id: '/_authenticated/wilson'
+      path: '/wilson'
+      fullPath: '/wilson'
+      preLoaderRoute: typeof AuthenticatedWilsonRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/source': {
+      id: '/_authenticated/source'
+      path: '/source'
+      fullPath: '/source'
+      preLoaderRoute: typeof AuthenticatedSourceRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/searches': {
+      id: '/_authenticated/searches'
+      path: '/searches'
+      fullPath: '/searches'
+      preLoaderRoute: typeof AuthenticatedSearchesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/profile-builder': {
+      id: '/_authenticated/profile-builder'
+      path: '/profile-builder'
+      fullPath: '/profile-builder'
+      preLoaderRoute: typeof AuthenticatedProfileBuilderRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/presentations': {
+      id: '/_authenticated/presentations'
+      path: '/presentations'
+      fullPath: '/presentations'
+      preLoaderRoute: typeof AuthenticatedPresentationsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/candidates': {
+      id: '/_authenticated/candidates'
+      path: '/candidates'
+      fullPath: '/candidates'
+      preLoaderRoute: typeof AuthenticatedCandidatesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
+interface AuthenticatedRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedCandidatesRoute: typeof AuthenticatedCandidatesRoute
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedPresentationsRoute: typeof AuthenticatedPresentationsRoute
+  AuthenticatedProfileBuilderRoute: typeof AuthenticatedProfileBuilderRoute
+  AuthenticatedSearchesRoute: typeof AuthenticatedSearchesRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedSourceRoute: typeof AuthenticatedSourceRoute
+  AuthenticatedWilsonRoute: typeof AuthenticatedWilsonRoute
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedCandidatesRoute: AuthenticatedCandidatesRoute,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedPresentationsRoute: AuthenticatedPresentationsRoute,
+  AuthenticatedProfileBuilderRoute: AuthenticatedProfileBuilderRoute,
+  AuthenticatedSearchesRoute: AuthenticatedSearchesRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedSourceRoute: AuthenticatedSourceRoute,
+  AuthenticatedWilsonRoute: AuthenticatedWilsonRoute,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
