@@ -21,16 +21,35 @@ export type PresentationSection = {
 export function CinematicPresentation({
   candidate,
   sections,
+  showCover = true,
+  approvalState = "draft",
 }: {
   candidate: PresentationCandidate;
   sections: PresentationSection[];
+  showCover?: boolean;
+  approvalState?: "draft" | "approved";
 }) {
   const withBody = sections.filter((s) => (s.body_md ?? "").trim().length > 0);
 
   return (
-    <article className="cinematic-doc bg-[color:var(--paper,_#FAF7EE)] text-foreground">
+    <article className="cinematic-doc bg-[color:var(--paper,_#FAF7EE)] text-foreground relative">
+      {/* Approval / draft watermark — visible on screen and in PDF */}
+      <div
+        aria-hidden
+        className={`cinematic-watermark pointer-events-none absolute inset-x-0 top-[34%] z-50 flex justify-center ${
+          approvalState === "approved"
+            ? "text-emerald-700/15"
+            : "text-foreground/10"
+        }`}
+      >
+        <span className="font-serif text-[clamp(7rem,18vw,16rem)] font-bold uppercase tracking-[0.18em] -rotate-[18deg] select-none">
+          {approvalState === "approved" ? "Approved" : "Draft"}
+        </span>
+      </div>
+
       {/* Cover */}
-      <section className="cinematic-cover relative isolate flex min-h-[820px] flex-col justify-between overflow-hidden px-12 py-14 lg:px-20 lg:py-20">
+      {showCover && (
+        <section className="cinematic-cover relative isolate flex min-h-[820px] flex-col justify-between overflow-hidden px-12 py-14 lg:px-20 lg:py-20">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 -z-10"
@@ -80,7 +99,10 @@ export function CinematicPresentation({
             Prepared for principal review
           </div>
         </footer>
-      </section>
+        </section>
+      )}
+
+
 
       {/* Table of contents */}
       {withBody.length > 0 && (

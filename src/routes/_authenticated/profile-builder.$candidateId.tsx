@@ -4,6 +4,8 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
+  ArrowDown,
+  ArrowUp,
   CheckCircle2,
   Eye,
   PencilLine,
@@ -20,6 +22,7 @@ import { getCandidate } from "@/lib/candidates.functions";
 import {
   generateProfileSection,
   listProfileSections,
+  reorderProfileSections,
   saveProfileSection,
 } from "@/lib/profile.functions";
 
@@ -50,6 +53,7 @@ function ProfileBuilderForCandidate() {
   const listSections = useServerFn(listProfileSections);
   const saveSection = useServerFn(saveProfileSection);
   const generate = useServerFn(generateProfileSection);
+  const reorder = useServerFn(reorderProfileSections);
   const qc = useQueryClient();
 
   const { data: candData } = useQuery({
@@ -99,6 +103,49 @@ function ProfileBuilderForCandidate() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const reorderMut = useMutation({
+    mutationFn: async (ordered_ids: string[]) => {
+      await reorder({ data: { candidate_id: candidateId, ordered_ids } });
+    },
+    onMutate: async (ordered_ids) => {
+      await qc.cancelQueries({ queryKey: ["profile-sections", candidateId] });
+      const prev = qc.getQueryData(["profile-sections", candidateId]);
+      qc.setQueryData(
+        ["profile-sections", candidateId],
+        (old: SectionRow[] | undefined) => {
+          if (!old) return old;
+          const map = new Map(old.map((r) => [r.id, r]));
+          return ordered_ids
+            .map((id, i) => {
+              const row = map.get(id);
+              return row ? { ...row, order_index: i } : null;
+            })
+            .filter(Boolean) as SectionRow[];
+        },
+      );
+      return { prev };
+    },
+    onError: (e: Error, _vars, ctx) => {
+      if (ctx?.prev !== undefined) {
+        qc.setQueryData(["profile-sections", candidateId], ctx.prev);
+      }
+      toast.error(e.message);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["profile-sections", candidateId] });
+    },
+  });
+
+  function moveSection(id: string, dir: -1 | 1) {
+    const rows = (sections as SectionRow[] | undefined) ?? [];
+    const idx = rows.findIndex((r) => r.id === id);
+    const target = idx + dir;
+    if (idx < 0 || target < 0 || target >= rows.length) return;
+    const next = rows.slice();
+    [next[idx], next[target]] = [next[target], next[idx]];
+    reorderMut.mutate(next.map((r) => r.id));
+  }
 
   async function handleGenerate() {
     if (!active) return;
@@ -170,32 +217,65 @@ function ProfileBuilderForCandidate() {
         <ShellCard className="xl:col-span-3 p-5">
           <Pill>Sections</Pill>
           <div className="mt-5 space-y-2">
-            {(sections as SectionRow[] | undefined)?.map((s, i) => {
+            {(sections as SectionRow[] | undefined)?.map((s, i, arr) => {
               const isActive = active?.id === s.id;
               return (
-                <button
+                <div
                   key={s.id}
-                  onClick={() => {
-                    setActiveId(s.id);
-                    setDraft(s.body_md ?? "");
-                    lastSyncedRef.current = s.id;
-                  }}
-                  className={`block w-full rounded-2xl border p-3 text-left transition ${
+                  className={`group rounded-2xl border p-3 transition ${
                     isActive
                       ? "border-[color:var(--gold)]/60 bg-[color:var(--gold)]/8"
                       : "border-foreground/10 bg-card hover:border-foreground/25"
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/35">
-                      {String(i + 1).padStart(2, "0")}
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveId(s.id);
+                        setDraft(s.body_md ?? "");
+                        lastSyncedRef.current = s.id;
+                      }}
+                      className="flex flex-1 items-center gap-2 text-left"
+                    >
+                      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/35">
+                        {String(i + 1).padStart(2, "0")}
+                      </div>
+                      <StatusPill status={s.status} />
+                    </button>
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        type="button"
+                        aria-label="Move section up"
+                        disabled={i === 0 || reorderMut.isPending}
+                        onClick={() => moveSection(s.id, -1)}
+                        className="rounded-md p-1 text-foreground/45 hover:bg-foreground/5 hover:text-foreground disabled:opacity-30"
+                      >
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Move section down"
+                        disabled={i === arr.length - 1 || reorderMut.isPending}
+                        onClick={() => moveSection(s.id, 1)}
+                        className="rounded-md p-1 text-foreground/45 hover:bg-foreground/5 hover:text-foreground disabled:opacity-30"
+                      >
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </button>
                     </div>
-                    <StatusPill status={s.status} />
                   </div>
-                  <div className="mt-1 text-sm font-medium leading-snug">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveId(s.id);
+                      setDraft(s.body_md ?? "");
+                      lastSyncedRef.current = s.id;
+                    }}
+                    className="mt-1 block w-full text-left text-sm font-medium leading-snug"
+                  >
                     {s.title}
-                  </div>
-                </button>
+                  </button>
+                </div>
               );
             })}
           </div>
