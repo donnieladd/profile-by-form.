@@ -104,6 +104,49 @@ function ProfileBuilderForCandidate() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const reorderMut = useMutation({
+    mutationFn: async (ordered_ids: string[]) => {
+      await reorder({ data: { candidate_id: candidateId, ordered_ids } });
+    },
+    onMutate: async (ordered_ids) => {
+      await qc.cancelQueries({ queryKey: ["profile-sections", candidateId] });
+      const prev = qc.getQueryData(["profile-sections", candidateId]);
+      qc.setQueryData(
+        ["profile-sections", candidateId],
+        (old: SectionRow[] | undefined) => {
+          if (!old) return old;
+          const map = new Map(old.map((r) => [r.id, r]));
+          return ordered_ids
+            .map((id, i) => {
+              const row = map.get(id);
+              return row ? { ...row, order_index: i } : null;
+            })
+            .filter(Boolean) as SectionRow[];
+        },
+      );
+      return { prev };
+    },
+    onError: (e: Error, _vars, ctx) => {
+      if (ctx?.prev !== undefined) {
+        qc.setQueryData(["profile-sections", candidateId], ctx.prev);
+      }
+      toast.error(e.message);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["profile-sections", candidateId] });
+    },
+  });
+
+  function moveSection(id: string, dir: -1 | 1) {
+    const rows = (sections as SectionRow[] | undefined) ?? [];
+    const idx = rows.findIndex((r) => r.id === id);
+    const target = idx + dir;
+    if (idx < 0 || target < 0 || target >= rows.length) return;
+    const next = rows.slice();
+    [next[idx], next[target]] = [next[target], next[idx]];
+    reorderMut.mutate(next.map((r) => r.id));
+  }
+
   async function handleGenerate() {
     if (!active) return;
     setStreamingId(active.id);
