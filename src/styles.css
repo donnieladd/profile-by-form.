@@ -174,3 +174,28 @@
     margin: 1.1em 0;
   }
 }
+
+/* Cinematic candidate presentation — print/PDF */
+@media print {
+  @page { size: Letter; margin: 0; }
+  html, body {
+    background: #FAF7EE !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body * { visibility: hidden; }
+  .cinematic-doc, .cinematic-doc * { visibility: visible; }
+  .cinematic-doc {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+  }
+  .cinematic-page, .cinematic-cover {
+    page-break-after: always;
+    break-after: page;
+  }
+  .cinematic-doc :is(.cinematic-page, .cinematic-cover):last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+}
