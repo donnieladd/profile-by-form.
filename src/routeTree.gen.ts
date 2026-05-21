@@ -21,6 +21,7 @@ import { Route as AuthenticatedPresentationsRouteImport } from './routes/_authen
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCandidatesRouteImport } from './routes/_authenticated/candidates'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedSearchesSearchIdRouteImport } from './routes/_authenticated/searches.$searchId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -83,6 +84,12 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedSearchesSearchIdRoute =
+  AuthenticatedSearchesSearchIdRouteImport.update({
+    id: '/$searchId',
+    path: '/$searchId',
+    getParentRoute: () => AuthenticatedSearchesRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -92,10 +99,11 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/presentations': typeof AuthenticatedPresentationsRoute
   '/profile-builder': typeof AuthenticatedProfileBuilderRoute
-  '/searches': typeof AuthenticatedSearchesRoute
+  '/searches': typeof AuthenticatedSearchesRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/source': typeof AuthenticatedSourceRoute
   '/wilson': typeof AuthenticatedWilsonRoute
+  '/searches/$searchId': typeof AuthenticatedSearchesSearchIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -105,10 +113,11 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/presentations': typeof AuthenticatedPresentationsRoute
   '/profile-builder': typeof AuthenticatedProfileBuilderRoute
-  '/searches': typeof AuthenticatedSearchesRoute
+  '/searches': typeof AuthenticatedSearchesRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/source': typeof AuthenticatedSourceRoute
   '/wilson': typeof AuthenticatedWilsonRoute
+  '/searches/$searchId': typeof AuthenticatedSearchesSearchIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -120,10 +129,11 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/presentations': typeof AuthenticatedPresentationsRoute
   '/_authenticated/profile-builder': typeof AuthenticatedProfileBuilderRoute
-  '/_authenticated/searches': typeof AuthenticatedSearchesRoute
+  '/_authenticated/searches': typeof AuthenticatedSearchesRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/source': typeof AuthenticatedSourceRoute
   '/_authenticated/wilson': typeof AuthenticatedWilsonRoute
+  '/_authenticated/searches/$searchId': typeof AuthenticatedSearchesSearchIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/source'
     | '/wilson'
+    | '/searches/$searchId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/source'
     | '/wilson'
+    | '/searches/$searchId'
   id:
     | '__root__'
     | '/'
@@ -166,6 +178,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/source'
     | '/_authenticated/wilson'
+    | '/_authenticated/searches/$searchId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -260,8 +273,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/searches/$searchId': {
+      id: '/_authenticated/searches/$searchId'
+      path: '/$searchId'
+      fullPath: '/searches/$searchId'
+      preLoaderRoute: typeof AuthenticatedSearchesSearchIdRouteImport
+      parentRoute: typeof AuthenticatedSearchesRoute
+    }
   }
 }
+
+interface AuthenticatedSearchesRouteChildren {
+  AuthenticatedSearchesSearchIdRoute: typeof AuthenticatedSearchesSearchIdRoute
+}
+
+const AuthenticatedSearchesRouteChildren: AuthenticatedSearchesRouteChildren = {
+  AuthenticatedSearchesSearchIdRoute: AuthenticatedSearchesSearchIdRoute,
+}
+
+const AuthenticatedSearchesRouteWithChildren =
+  AuthenticatedSearchesRoute._addFileChildren(
+    AuthenticatedSearchesRouteChildren,
+  )
 
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
@@ -269,7 +302,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPresentationsRoute: typeof AuthenticatedPresentationsRoute
   AuthenticatedProfileBuilderRoute: typeof AuthenticatedProfileBuilderRoute
-  AuthenticatedSearchesRoute: typeof AuthenticatedSearchesRoute
+  AuthenticatedSearchesRoute: typeof AuthenticatedSearchesRouteWithChildren
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedSourceRoute: typeof AuthenticatedSourceRoute
   AuthenticatedWilsonRoute: typeof AuthenticatedWilsonRoute
@@ -281,7 +314,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPresentationsRoute: AuthenticatedPresentationsRoute,
   AuthenticatedProfileBuilderRoute: AuthenticatedProfileBuilderRoute,
-  AuthenticatedSearchesRoute: AuthenticatedSearchesRoute,
+  AuthenticatedSearchesRoute: AuthenticatedSearchesRouteWithChildren,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedSourceRoute: AuthenticatedSourceRoute,
   AuthenticatedWilsonRoute: AuthenticatedWilsonRoute,
@@ -299,3 +332,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
