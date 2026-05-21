@@ -100,3 +100,12 @@ export const DEFAULT_SOURCE_CHECKLIST: { kind: SourceItemKind; label: string }[]
   { kind: "manager_notes", label: "Search manager notes" },
   { kind: "photos", label: "Candidate photos" },
 ];
+
+export const DEFAULT_PROFILE_SECTIONS: { key: string; title: string }[] = [
+  { key: "personal_background", title: "Personal background & faith journey" },
+  { key: "ministry_journey", title: "Ministry & leadership journey" },
+  { key: "family_spouse", title: "Family & spouse profile" },
+  { key: "strengths", title: "Strengths & leadership qualities" },
+  { key: "growth_areas", title: "Growth areas & considerations" },
+  { key: "final_assessment", title: "Final assessment & readiness summary" },
+];
