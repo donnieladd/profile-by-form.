@@ -68,7 +68,6 @@ export const compareCandidates = createServerFn({ method: "POST" })
         .order("order_index", { ascending: true }),
     ]);
 
-    // Preserve order user requested
     const byId: Record<string, NonNullable<typeof candidates>[number]> = {};
     (candidates ?? []).forEach((c) => (byId[c.id] = c));
     const ordered = data.ids.map((id) => byId[id]).filter(Boolean);
@@ -99,4 +98,76 @@ export const bulkLinkCandidatesToSearch = createServerFn({ method: "POST" })
     const { error } = await supabase.from("search_candidates").insert(rows);
     if (error) throw new Error(error.message);
     return { ok: true, count: rows.length };
+  });
+
+// CSV bulk export. Returns serialized CSV text + filename. The client triggers
+// the download via a Blob so we don't depend on streaming response bodies.
+export const exportCandidatesCsv = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        ids: z.array(z.string().uuid()).min(1).max(1000).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    let query = supabase
+      .from("candidates")
+      .select(
+        "id, full_name, email, phone, city, current_title, current_org, fit_role, source, status, created_at, updated_at",
+      )
+      .order("updated_at", { ascending: false });
+    if (data.ids?.length) query = query.in("id", data.ids);
+    const { data: rows, error } = await query;
+    if (error) throw new Error(error.message);
+
+    const headers = [
+      "ID",
+      "Full Name",
+      "Email",
+      "Phone",
+      "City",
+      "Current Title",
+      "Current Org",
+      "Fit Role",
+      "Source",
+      "Status",
+      "Created At",
+      "Updated At",
+    ];
+    const escape = (v: unknown) => {
+      if (v === null || v === undefined) return "";
+      const s = String(v);
+      if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+    const lines = [headers.join(",")];
+    for (const r of rows ?? []) {
+      lines.push(
+        [
+          r.id,
+          r.full_name,
+          r.email,
+          r.phone,
+          r.city,
+          r.current_title,
+          r.current_org,
+          r.fit_role,
+          r.source,
+          r.status,
+          r.created_at,
+          r.updated_at,
+        ]
+          .map(escape)
+          .join(","),
+      );
+    }
+    const date = new Date().toISOString().slice(0, 10);
+    return {
+      filename: `one39-candidates-${date}.csv`,
+      csv: lines.join("\n"),
+      count: rows?.length ?? 0,
+    };
   });

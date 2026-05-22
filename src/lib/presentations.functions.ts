@@ -1,8 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { recordPresentationView } from "./presentation-analytics.functions";
 
 export const listPresentationCandidates = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -148,7 +150,7 @@ export const getPublicPresentation = createServerFn({ method: "POST" })
     const { data: pres, error } = await supabaseAdmin
       .from("presentations")
       .select(
-        "id, candidate_id, title, subtitle, access_code, status",
+        "id, candidate_id, title, subtitle, access_code, status, created_by",
       )
       .eq("share_slug", data.share_slug)
       .maybeSingle();
@@ -180,6 +182,25 @@ export const getPublicPresentation = createServerFn({ method: "POST" })
       (sections ?? []).length > 0 &&
       (sections ?? []).every((s) => s.status === "approved");
 
+    // Log the view server-side AFTER access checks pass. Issues a signed
+    // per-view token the client uses to update dwell + sections viewed.
+    let view: { view_id: string; token: string } | null = null;
+    try {
+      const req = getRequest();
+      const ua = req?.headers.get("user-agent") ?? null;
+      const referrer = req?.headers.get("referer") ?? null;
+      view = await recordPresentationView({
+        presentation_id: pres.id,
+        candidate_id: pres.candidate_id,
+        owner_id: pres.created_by ?? null,
+        share_slug: data.share_slug,
+        user_agent: ua,
+        referrer,
+      });
+    } catch (e) {
+      console.error("[share-view] failed to record view", e);
+    }
+
     return {
       title: pres.title,
       subtitle: pres.subtitle,
@@ -188,5 +209,6 @@ export const getPublicPresentation = createServerFn({ method: "POST" })
       approvalState: allApproved
         ? ("approved" as const)
         : ("draft" as const),
+      view,
     };
   });

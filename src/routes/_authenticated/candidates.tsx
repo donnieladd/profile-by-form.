@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { GitCompare, Plus, Search as SearchIcon, Sparkles, Users } from "lucide-react";
+import { Download, GitCompare, Plus, Search as SearchIcon, Sparkles, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader, Pill, ShellCard } from "@/components/brand/brand";
@@ -26,7 +26,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createCandidate, listCandidates } from "@/lib/candidates.functions";
-import { bulkUpdateCandidateStatus } from "@/lib/candidates-bulk.functions";
+import {
+  bulkUpdateCandidateStatus,
+  exportCandidatesCsv,
+} from "@/lib/candidates-bulk.functions";
 import { candidateStatusEnum, type CandidateStatus } from "@/lib/schemas";
 
 export const Route = createFileRoute("/_authenticated/candidates")({
@@ -54,6 +57,7 @@ function CandidatesPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const list = useServerFn(listCandidates);
   const bulkStatus = useServerFn(bulkUpdateCandidateStatus);
+  const exportFn = useServerFn(exportCandidatesCsv);
   const qc = useQueryClient();
   const navigate = useNavigate();
 
@@ -92,6 +96,24 @@ function CandidatesPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const exportMut = useMutation({
+    mutationFn: (ids: string[] | undefined) =>
+      exportFn({ data: ids?.length ? { ids } : {} }),
+    onSuccess: (res) => {
+      const blob = new Blob([res.csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success(`Exported ${res.count} candidate${res.count === 1 ? "" : "s"}`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   function openCompare() {
     const ids = Array.from(selected).slice(0, 3);
     if (ids.length < 2) {
@@ -113,15 +135,25 @@ function CandidatesPage() {
         title="Candidates directory"
         subtitle="Discover, evaluate, and manage candidates for your leadership needs."
         actions={
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Candidate
-              </Button>
-            </DialogTrigger>
-            <NewCandidateDialog onDone={() => setOpen(false)} />
-          </Dialog>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              disabled={exportMut.isPending || (data ?? []).length === 0}
+              onClick={() => exportMut.mutate(undefined)}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export all
+            </Button>
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Candidate
+                </Button>
+              </DialogTrigger>
+              <NewCandidateDialog onDone={() => setOpen(false)} />
+            </Dialog>
+          </div>
         }
       />
 
@@ -178,6 +210,15 @@ function CandidatesPage() {
                 <Button size="sm" variant="outline" onClick={openCompare}>
                   <GitCompare className="mr-1 h-3.5 w-3.5" />
                   Compare
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={exportMut.isPending}
+                  onClick={() => exportMut.mutate(Array.from(selected))}
+                >
+                  <Download className="mr-1 h-3.5 w-3.5" />
+                  Export CSV
                 </Button>
                 <Button
                   size="sm"

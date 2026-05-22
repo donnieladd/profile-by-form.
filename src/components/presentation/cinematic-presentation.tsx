@@ -135,6 +135,7 @@ export function CinematicPresentation({
       {withBody.map((s, i) => (
         <section
           key={s.id}
+          data-section-key={s.section_key}
           className="cinematic-page border-t border-foreground/10 px-12 py-20 lg:px-20"
         >
           <div className="grid grid-cols-12 gap-10">

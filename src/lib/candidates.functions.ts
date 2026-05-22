@@ -78,8 +78,20 @@ export const updateCandidate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => updateCandidateSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { id, ...patch } = data;
+
+    // Snapshot the previous status so we only notify on real transitions.
+    let prevStatus: string | null = null;
+    if (patch.status) {
+      const { data: prev } = await supabase
+        .from("candidates")
+        .select("status, full_name, owner_id, created_by")
+        .eq("id", id)
+        .maybeSingle();
+      prevStatus = prev?.status ?? null;
+    }
+
     const { data: row, error } = await supabase
       .from("candidates")
       .update(patch)
@@ -87,5 +99,29 @@ export const updateCandidate = createServerFn({ method: "POST" })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
+
+    if (patch.status && prevStatus && prevStatus !== row.status) {
+      const ownerId = row.owner_id ?? row.created_by;
+      if (ownerId && ownerId !== userId) {
+        const { data: prefs } = await (supabase as any)
+          .from("notification_preferences")
+          .select("notify_candidate_status")
+          .eq("user_id", ownerId)
+          .maybeSingle();
+        const wantsInApp =
+          (prefs as { notify_candidate_status?: boolean } | null)
+            ?.notify_candidate_status ?? true;
+        if (wantsInApp) {
+          await supabase.from("notifications").insert({
+            user_id: ownerId,
+            kind: "candidate_status",
+            title: `${row.full_name} → ${row.status}`,
+            body: `Status changed from ${prevStatus} to ${row.status}.`,
+            link: `/candidates/${row.id}`,
+          });
+        }
+      }
+    }
+
     return row;
   });

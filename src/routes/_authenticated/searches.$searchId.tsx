@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, KanbanSquare, List, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Pill, ShellCard } from "@/components/brand/brand";
@@ -28,7 +28,10 @@ import {
   getSearch,
   linkCandidateToSearch,
   updateSearch,
+  updateSearchCandidateStage,
 } from "@/lib/searches.functions";
+import { PipelineKanban } from "@/components/app/pipeline-kanban";
+import type { SearchStage } from "@/lib/schemas";
 
 export const Route = createFileRoute("/_authenticated/searches/$searchId")({
   head: () => ({
@@ -47,7 +50,9 @@ function SearchDetailPage() {
   const { searchId } = useParams({ from: "/_authenticated/searches/$searchId" });
   const get = useServerFn(getSearch);
   const update = useServerFn(updateSearch);
+  const stageFn = useServerFn(updateSearchCandidateStage);
   const qc = useQueryClient();
+  const [view, setView] = useState<"list" | "board">("list");
 
   const { data, isLoading } = useQuery({
     queryKey: ["search", searchId],
@@ -63,6 +68,31 @@ function SearchDetailPage() {
       toast.success("Updated");
     },
     onError: (e: Error) => toast.error(e.message),
+  });
+
+  const stageMut = useMutation({
+    mutationFn: (v: { id: string; stage: SearchStage }) =>
+      stageFn({ data: v }),
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["search", searchId] });
+      const prev = qc.getQueryData<typeof data>(["search", searchId]);
+      if (prev) {
+        qc.setQueryData(["search", searchId], {
+          ...prev,
+          candidates: prev.candidates.map((c) =>
+            c.id === vars.id ? { ...c, stage: vars.stage } : c,
+          ),
+        });
+      }
+      return { prev };
+    },
+    onError: (e: Error, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["search", searchId], ctx.prev);
+      toast.error(e.message);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["search", searchId] });
+    },
   });
 
   if (isLoading) {
@@ -131,35 +161,64 @@ function SearchDetailPage() {
         <ShellCard className="xl:col-span-2 overflow-hidden">
           <div className="flex items-center justify-between border-b border-foreground/10 bg-[color:var(--soft)] px-5 py-4">
             <h3 className="font-serif text-xl">Candidates in this search</h3>
-            <AddCandidateDialog searchId={searchId} existingIds={candidates.map((c) => c.candidate_id)} />
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-full border border-foreground/10 bg-card p-0.5">
+                <button
+                  onClick={() => setView("list")}
+                  className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[.14em] transition ${view === "list" ? "bg-foreground text-background" : "text-foreground/55 hover:text-foreground"}`}
+                >
+                  <List className="h-3 w-3" />
+                  List
+                </button>
+                <button
+                  onClick={() => setView("board")}
+                  className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[.14em] transition ${view === "board" ? "bg-foreground text-background" : "text-foreground/55 hover:text-foreground"}`}
+                >
+                  <KanbanSquare className="h-3 w-3" />
+                  Board
+                </button>
+              </div>
+              <AddCandidateDialog
+                searchId={searchId}
+                existingIds={candidates.map((c) => c.candidate_id)}
+              />
+            </div>
           </div>
-          {candidates.length === 0 && (
+          {candidates.length === 0 ? (
             <div className="px-5 py-12 text-center text-sm text-foreground/55">
               No candidates linked yet.
             </div>
-          )}
-          {candidates.map((link) => (
-            <Link
-              key={link.id}
-              to="/candidates/$candidateId"
-              params={{ candidateId: link.candidate_id }}
-              className="flex items-center justify-between border-t border-foreground/10 px-5 py-4 hover:bg-[color:var(--soft)]"
-            >
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-[color:var(--gold)]/20" />
-                <div>
-                  <div className="font-semibold">
-                    {link.candidate?.full_name ?? "Candidate"}
-                  </div>
-                  <div className="text-xs text-foreground/45">
-                    {link.candidate?.current_title ?? "—"} ·{" "}
-                    {link.candidate?.city ?? "—"}
+          ) : view === "board" ? (
+            <div className="p-4">
+              <PipelineKanban
+                links={candidates}
+                onStageChange={(id, stage) => stageMut.mutate({ id, stage })}
+              />
+            </div>
+          ) : (
+            candidates.map((link) => (
+              <Link
+                key={link.id}
+                to="/candidates/$candidateId"
+                params={{ candidateId: link.candidate_id }}
+                className="flex items-center justify-between border-t border-foreground/10 px-5 py-4 hover:bg-[color:var(--soft)]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-[color:var(--gold)]/20" />
+                  <div>
+                    <div className="font-semibold">
+                      {link.candidate?.full_name ?? "Candidate"}
+                    </div>
+                    <div className="text-xs text-foreground/45">
+                      {link.candidate?.current_title ?? "—"} ·{" "}
+                      {link.candidate?.city ?? "—"}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <Pill tone="gold">{link.stage}</Pill>
-            </Link>
-          ))}
+                <Pill tone="gold">{link.stage}</Pill>
+              </Link>
+            ))
+          )}
         </ShellCard>
 
         <ShellCard className="p-6">

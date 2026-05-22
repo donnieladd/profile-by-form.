@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
 
@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getPublicPresentation } from "@/lib/presentations.functions";
-import { logPresentationView } from "@/lib/presentation-analytics.functions";
+import { updatePresentationViewDwell } from "@/lib/presentation-analytics.functions";
 
 export const Route = createFileRoute("/p/$shareSlug")({
   head: () => ({
@@ -27,7 +27,11 @@ function PublicSharePage() {
   const [submittedCode, setSubmittedCode] = useState<string | undefined>(
     undefined,
   );
-  const [logged, setLogged] = useState(false);
+
+  const viewRef = useRef<{ view_id: string; token: string } | null>(null);
+  const sectionsViewedRef = useRef<Set<string>>(new Set());
+  const startRef = useRef<number>(Date.now());
+  const lastReportRef = useRef<number>(0);
 
   const loadMut = useMutation({
     mutationFn: () =>
@@ -40,24 +44,103 @@ function PublicSharePage() {
 
   const result = loadMut.data;
 
-  // log view once a successful payload comes back
+  // Capture the signed view token returned by the server fn.
   useEffect(() => {
-    if (logged || !result || "error" in result) return;
-    setLogged(true);
-    logPresentationView({
-      data: {
+    if (!result || "error" in result) return;
+    if (result.view && !viewRef.current) {
+      viewRef.current = result.view;
+      startRef.current = Date.now();
+    }
+  }, [result]);
+
+  // Track section visibility + dwell time, beacon updates back to server.
+  useEffect(() => {
+    if (!viewRef.current) return;
+
+    function reportDwell(reason: "interval" | "hidden") {
+      const view = viewRef.current;
+      if (!view) return;
+      const dwellMs = Date.now() - startRef.current;
+      if (
+        reason === "interval" &&
+        Date.now() - lastReportRef.current < 10_000
+      )
+        return;
+      lastReportRef.current = Date.now();
+
+      const payload = {
+        view_id: view.view_id,
         share_slug: shareSlug,
-        user_agent:
-          typeof navigator !== "undefined"
-            ? navigator.userAgent.slice(0, 500)
-            : undefined,
-        referrer:
-          typeof document !== "undefined"
-            ? (document.referrer ?? "").slice(0, 500) || undefined
-            : undefined,
+        token: view.token,
+        dwell_ms: dwellMs,
+        sections_viewed: Array.from(sectionsViewedRef.current),
+      };
+
+      // Prefer the typed server-fn call during interval reports. For unload
+      // moments, fall back to fetch(keepalive) which is the modern, spec-
+      // compliant transport that browsers honor when the page is closing.
+      if (reason === "interval") {
+        updatePresentationViewDwell({ data: payload }).catch(() => {});
+        return;
+      }
+
+      try {
+        // The server fn is also reachable via a stable URL exposed at runtime.
+        const url = (updatePresentationViewDwell as unknown as { url?: string })
+          .url;
+        const body = JSON.stringify({ data: payload });
+        if (url && typeof navigator !== "undefined" && "sendBeacon" in navigator) {
+          const blob = new Blob([body], { type: "application/json" });
+          if (navigator.sendBeacon(url, blob)) return;
+        }
+        if (url) {
+          void fetch(url, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body,
+            keepalive: true,
+          });
+        } else {
+          // Fall back to the typed call; may be dropped on unload in old browsers.
+          updatePresentationViewDwell({ data: payload }).catch(() => {});
+        }
+      } catch {
+        /* no-op */
+      }
+    }
+
+    const els = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-section-key]"),
+    );
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting && e.intersectionRatio > 0.4) {
+            const k = (e.target as HTMLElement).dataset.sectionKey;
+            if (k) sectionsViewedRef.current.add(k);
+          }
+        }
       },
-    }).catch(() => {});
-  }, [result, logged, shareSlug]);
+      { threshold: [0.4] },
+    );
+    els.forEach((el) => io.observe(el));
+
+    const interval = setInterval(() => reportDwell("interval"), 15_000);
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") reportDwell("hidden");
+    };
+    const onPageHide = () => reportDwell("hidden");
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onPageHide);
+
+    return () => {
+      reportDwell("hidden");
+      clearInterval(interval);
+      io.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onPageHide);
+    };
+  }, [shareSlug, result]);
 
   if (loadMut.isPending && !result) {
     return (

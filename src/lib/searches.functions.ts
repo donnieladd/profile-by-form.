@@ -82,6 +82,36 @@ export const updateSearch = createServerFn({ method: "POST" })
     return row;
   });
 
+export const updateSearchCandidateStage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        stage: z.enum([
+          "intake",
+          "sourcing",
+          "assessments",
+          "interviews",
+          "finalists",
+          "presented",
+          "placed",
+        ]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: row, error } = await supabase
+      .from("search_candidates")
+      .update({ stage: data.stage })
+      .eq("id", data.id)
+      .select("id, stage, candidate_id, search_id")
+      .single();
+    if (error) throw new Error(error.message);
+    return row;
+  });
+
 export const linkCandidateToSearch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
