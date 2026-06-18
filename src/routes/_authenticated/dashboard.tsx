@@ -70,7 +70,7 @@ function DashboardPage() {
       icon: FileText,
     },
     {
-      label: "Presentations ready",
+      label: "Profiles ready",
       value: stats?.presentationsReady ?? 0,
       icon: Presentation,
     },

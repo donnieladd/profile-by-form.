@@ -134,7 +134,7 @@ function CandidateDetailPage() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="source">Source Package</TabsTrigger>
           <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="presentation">Presentation</TabsTrigger>
+          <TabsTrigger value="presentation">Profile output</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">

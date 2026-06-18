@@ -6,6 +6,8 @@ import {
   CinematicPresentation,
   type PresentationSection,
 } from "@/components/presentation/cinematic-presentation";
+import { MediaReviewPresentation } from "@/components/presentation/media-review-presentation";
+import { ProfileAltPresentation } from "@/components/presentation/profile-alt-presentation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getPublicPresentation } from "@/lib/presentations.functions";
@@ -21,7 +23,7 @@ export const Route = createFileRoute("/p/$shareSlug")({
   component: PublicSharePage,
 });
 
-function PublicSharePage() {
+export function PublicSharePage() {
   const { shareSlug } = Route.useParams();
   const [code, setCode] = useState("");
   const [submittedCode, setSubmittedCode] = useState<string | undefined>(
@@ -164,7 +166,7 @@ function PublicSharePage() {
           >
             <h1 className="font-serif text-2xl">Access code required</h1>
             <p className="mt-2 text-sm text-foreground/55">
-              This presentation is protected. Enter the code shared with you.
+              This profile is protected. Enter the code shared with you.
             </p>
             <Input
               value={code}
@@ -174,7 +176,7 @@ function PublicSharePage() {
               autoFocus
             />
             <Button type="submit" className="mt-4 w-full">
-              View presentation
+              View profile
             </Button>
           </form>
         </div>
@@ -183,7 +185,7 @@ function PublicSharePage() {
     return (
       <div className="grid min-h-screen place-items-center bg-[color:var(--paper,#FAF7EE)] p-6 text-center">
         <div>
-          <h1 className="font-serif text-3xl">Presentation unavailable</h1>
+          <h1 className="font-serif text-3xl">Profile unavailable</h1>
           <p className="mt-2 text-sm text-foreground/55">
             This link is no longer active or hasn't been shared yet.
           </p>
@@ -196,12 +198,28 @@ function PublicSharePage() {
 
   return (
     <div className="bg-[color:var(--paper,#FAF7EE)]">
-      <CinematicPresentation
-        candidate={result.candidate}
-        sections={result.sections as PresentationSection[]}
-        showCover={true}
-        approvalState={result.approvalState}
-      />
+      {result.template_version === "media_review" ? (
+        <MediaReviewPresentation
+          candidateName={result.candidate.full_name}
+          title={result.title}
+          subtitle={result.subtitle}
+          city={result.candidate.city}
+          avatarUrl={result.candidate.avatar_url}
+          videos={result.mediaVideos ?? []}
+        />
+      ) : result.template_version === "profile_alt" ? (
+        <ProfileAltPresentation
+          candidate={result.candidate}
+          sections={result.sections as PresentationSection[]}
+        />
+      ) : (
+        <CinematicPresentation
+          candidate={result.candidate}
+          sections={result.sections as PresentationSection[]}
+          showCover={true}
+          approvalState={result.approvalState}
+        />
+      )}
       <footer className="border-t border-foreground/10 py-6 text-center text-xs text-foreground/40">
         Profile by form. · ONE39
       </footer>

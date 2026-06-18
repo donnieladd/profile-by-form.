@@ -163,7 +163,7 @@ export function CinematicPresentation({
         <section className="cinematic-page border-t border-foreground/10 px-12 py-24 text-center lg:px-20">
           <p className="font-serif text-2xl text-foreground/55">
             No approved sections yet. Draft and approve profile sections to
-            assemble this presentation.
+            assemble this profile.
           </p>
         </section>
       )}

@@ -163,7 +163,7 @@ function CandidatesPage() {
           <h3 className="mt-4 font-serif text-3xl">No candidates yet</h3>
           <p className="mt-2 max-w-md text-sm text-foreground/55">
             Add your first candidate to start building executive profiles and
-            cinematic presentations.
+            cinematic profiles.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Button onClick={() => setOpen(true)}>

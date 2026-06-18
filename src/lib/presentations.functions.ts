@@ -5,6 +5,12 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { recordPresentationView } from "./presentation-analytics.functions";
+import {
+  type PresentationTemplate,
+  templateIds,
+  normalizeTemplate,
+  templateToDbValue,
+} from "./presentation-templates";
 
 export const listPresentationCandidates = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -30,7 +36,9 @@ export const listPresentationCandidates = createServerFn({ method: "GET" })
         .in("candidate_id", ids),
       supabase
         .from("presentations")
-        .select("id, candidate_id, status, share_slug, updated_at")
+        .select(
+          "id, candidate_id, status, share_slug, template_version, updated_at",
+        )
         .in("candidate_id", ids),
     ]);
 
@@ -48,13 +56,19 @@ export const listPresentationCandidates = createServerFn({ method: "GET" })
 
     const presByCand: Record<
       string,
-      { id: string; status: string; share_slug: string | null }
+      {
+        id: string;
+        status: string;
+        share_slug: string | null;
+        template_version: PresentationTemplate;
+      }
     > = {};
     (presRows ?? []).forEach((p) => {
       presByCand[p.candidate_id] = {
         id: p.id,
         status: p.status,
         share_slug: p.share_slug,
+        template_version: normalizeTemplate(p.template_version),
       };
     });
 
@@ -73,6 +87,68 @@ function genSlug() {
     .join("");
 }
 
+function slugifyCandidateName(name: string) {
+  const cleaned = name
+    .toLowerCase()
+    .trim()
+    .normalize("NFKD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/[\s_]+/g, "-")
+    .replace(/-+/g, "-");
+  return cleaned.replace(/^-+|-+$/g, "") || "candidate";
+}
+
+function nextCandidatePresentationSlug(base: string, suffix: number) {
+  return suffix <= 1 ? base : `${base}-${suffix}`;
+}
+
+async function allocatePresentationSlug({
+  supabase,
+  candidateId,
+  name,
+  candidatePresentationIdToIgnore,
+}: {
+  supabase: any;
+  candidateId: string;
+  name: string;
+  candidatePresentationIdToIgnore?: string;
+}) {
+  const base = slugifyCandidateName(name);
+  for (let i = 1; i <= 18; i++) {
+    const candidateSlug = nextCandidatePresentationSlug(base, i);
+    const { data: collision } = await supabase
+      .from("presentations")
+      .select("id, candidate_id")
+      .eq("share_slug", candidateSlug)
+      .maybeSingle();
+
+    if (!collision) {
+      return candidateSlug;
+    }
+
+    // For regenerate flows, force a brand-new slug even if one exists on this
+    // candidate's current record; keep iterating until a different unique value.
+    if (collision.id === candidatePresentationIdToIgnore) {
+      continue;
+    }
+
+    if (collision.candidate_id !== candidateId) {
+      continue;
+    }
+
+    // This candidate already owns this slug — skip to a numbered fallback.
+    if (i === 1) {
+      continue;
+    }
+
+    return candidateSlug;
+  }
+  // Extremely unlikely: fallback to random-readable slug.
+  return `${base}-${genSlug()}`;
+}
+
 export const createOrRefreshShareLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
@@ -80,6 +156,9 @@ export const createOrRefreshShareLink = createServerFn({ method: "POST" })
       .object({
         candidate_id: z.string().uuid(),
         regenerate: z.boolean().optional(),
+        template_version: z
+          .enum(templateIds as [PresentationTemplate, ...PresentationTemplate[]])
+          .optional(),
         access_code: z.string().max(64).optional(),
       })
       .parse(input),
@@ -96,41 +175,53 @@ export const createOrRefreshShareLink = createServerFn({ method: "POST" })
 
     const { data: existing } = await supabase
       .from("presentations")
-      .select("id, share_slug, access_code, status")
+      .select("id, share_slug, access_code, status, template_version")
       .eq("candidate_id", data.candidate_id)
       .maybeSingle();
 
     const slug =
       existing && !data.regenerate && existing.share_slug
         ? existing.share_slug
-        : genSlug();
+        : await allocatePresentationSlug({
+            supabase,
+            candidateId: data.candidate_id,
+            name: candidate.full_name,
+            candidatePresentationIdToIgnore: data.regenerate ? existing?.id : undefined,
+          });
 
     if (existing) {
       const { data: updated, error } = await supabase
         .from("presentations")
         .update({
           share_slug: slug,
+          template_version:
+            templateToDbValue[
+              data.template_version ??
+                normalizeTemplate(existing.template_version)
+            ],
           access_code: data.access_code ?? existing.access_code,
           status: existing.status === "draft" ? "in_review" : existing.status,
         })
         .eq("id", existing.id)
-        .select("id, share_slug, access_code, status")
+        .select("id, share_slug, access_code, status, template_version")
         .single();
       if (error) throw new Error(error.message);
       return updated;
     }
 
     const { data: inserted, error } = await supabase
-      .from("presentations")
-      .insert({
-        candidate_id: data.candidate_id,
-        title: `${candidate.full_name} — Executive Profile`,
-        subtitle: candidate.fit_role ?? null,
-        share_slug: slug,
-        access_code: data.access_code ?? null,
-        status: "in_review",
-      })
-      .select("id, share_slug, access_code, status")
+        .from("presentations")
+        .insert({
+          candidate_id: data.candidate_id,
+          title: `${candidate.full_name} — Executive Profile`,
+          subtitle: candidate.fit_role ?? null,
+          share_slug: slug,
+          template_version:
+            templateToDbValue[data.template_version ?? "profile"],
+          access_code: data.access_code ?? null,
+          status: "in_review",
+        })
+      .select("id, share_slug, access_code, status, template_version")
       .single();
     if (error) throw new Error(error.message);
     return inserted;
@@ -150,7 +241,7 @@ export const getPublicPresentation = createServerFn({ method: "POST" })
     const { data: pres, error } = await supabaseAdmin
       .from("presentations")
       .select(
-        "id, candidate_id, title, subtitle, access_code, status, created_by",
+        "id, candidate_id, title, subtitle, access_code, status, created_by, template_version",
       )
       .eq("share_slug", data.share_slug)
       .maybeSingle();
@@ -161,7 +252,8 @@ export const getPublicPresentation = createServerFn({ method: "POST" })
     if (pres.access_code && pres.access_code !== (data.access_code ?? ""))
       return { error: "code_required" as const };
 
-    const [{ data: candidate }, { data: sections }] = await Promise.all([
+    const [{ data: candidate }, { data: sections }, { data: videoLinks }] =
+      await Promise.all([
       supabaseAdmin
         .from("candidates")
         .select(
@@ -174,6 +266,12 @@ export const getPublicPresentation = createServerFn({ method: "POST" })
         .select("id, title, section_key, body_md, order_index, status")
         .eq("candidate_id", pres.candidate_id)
         .order("order_index", { ascending: true }),
+      supabaseAdmin
+        .from("source_items")
+        .select("label, monday_link, file_name")
+        .eq("candidate_id", pres.candidate_id)
+        .eq("kind", "video_links")
+        .order("created_at", { ascending: true }),
     ]);
 
     if (!candidate) return { error: "not_found" as const };
@@ -206,9 +304,37 @@ export const getPublicPresentation = createServerFn({ method: "POST" })
       subtitle: pres.subtitle,
       candidate,
       sections: sections ?? [],
+      template_version: normalizeTemplate(pres.template_version),
+      mediaVideos: (videoLinks ?? [])
+        .map((v) => ({
+          title: v.label ?? v.file_name ?? "Video",
+          url: v.monday_link ?? "",
+        }))
+        .filter((v) => v.url.trim().length > 0),
       approvalState: allApproved
         ? ("approved" as const)
         : ("draft" as const),
       view,
     };
+  });
+
+export const getPresentationTemplateByCandidate = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ candidate_id: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: row, error } = await supabase
+      .from("presentations")
+      .select("template_version")
+      .eq("candidate_id", data.candidate_id)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!row) {
+      return { template_version: "profile" as PresentationTemplate };
+    }
+
+    return { template_version: normalizeTemplate(row.template_version) };
   });

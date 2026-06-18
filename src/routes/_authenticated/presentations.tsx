@@ -8,11 +8,12 @@ import { PageHeader, Pill, ShellCard } from "@/components/brand/brand";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { listPresentationCandidates } from "@/lib/presentations.functions";
+import { buildCandidateDeliveryUrl } from "@/lib/delivery-routing";
 
 export const Route = createFileRoute("/_authenticated/presentations")({
   head: () => ({
     meta: [
-      { title: "Presentations — Profile by form." },
+      { title: "Profiles — Profile by form." },
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),
@@ -43,8 +44,8 @@ function PresentationsPage() {
   return (
     <div className="p-6 lg:p-8">
       <PageHeader
-        eyebrow="Presentation builder"
-        title="Cinematic candidate presentations."
+        eyebrow="Profile builder"
+        title="Candidate profiles."
         subtitle="Every candidate with a profile shows here. Open one to preview, export, or share."
       />
 
@@ -76,10 +77,10 @@ function PresentationsPage() {
       ) : items.length === 0 ? (
         <ShellCard className="p-12 text-center">
           <PresentationIcon className="mx-auto h-10 w-10 text-foreground/30" />
-          <h3 className="mt-4 font-serif text-2xl">No presentations yet.</h3>
+          <h3 className="mt-4 font-serif text-2xl">No profiles yet.</h3>
           <p className="mt-2 text-sm text-foreground/55">
             Generate profile sections for a candidate to start building their
-            cinematic presentation.
+            cinematic profile.
           </p>
           <Button asChild className="mt-5">
             <Link to="/candidates">Open candidates</Link>
@@ -150,7 +151,10 @@ function PresentationsPage() {
                     <div className="mt-4 text-xs text-foreground/45">
                       Share link active ·{" "}
                       <span className="font-mono">
-                        /p/{c.presentation.share_slug.slice(0, 8)}…
+                        {buildCandidateDeliveryUrl({
+                          template: c.presentation.template_version,
+                          shareSlug: c.presentation.share_slug,
+                        })}
                       </span>
                     </div>
                   )}

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { buildCandidateDeliveryUrl } from "@/lib/delivery-routing";
 
 const FROM_FALLBACK = "One39 <onboarding@resend.dev>";
 
@@ -24,6 +25,7 @@ function buildEmailHtml(opts: {
   senderName: string;
   candidateName: string;
   candidateRole?: string | null;
+  deliveryLabel: "Candidate Profile" | "Candidate Media Review" | "Candidate Review Package";
   message?: string | null;
   shareUrl: string;
   accessCode?: string | null;
@@ -46,14 +48,14 @@ function buildEmailHtml(opts: {
     <tr><td style="padding:28px 32px">
       <p style="margin:0 0 8px;color:#3b3b3b;line-height:1.55">${greeting}</p>
       <p style="margin:0;color:#3b3b3b;line-height:1.55">
-        ${escapeHtml(opts.senderName)} has shared a candidate profile for
+        ${escapeHtml(opts.senderName)} has shared a ${opts.deliveryLabel} for
         <strong>${escapeHtml(opts.candidateName)}</strong>${role}.
       </p>
       ${userMsg}
       <table role="presentation" cellspacing="0" cellpadding="0" style="margin:24px auto">
         <tr><td style="background:#1a1a1a;border-radius:999px">
           <a href="${escapeHtml(opts.shareUrl)}" style="display:inline-block;padding:12px 24px;color:#fff;text-decoration:none;font-weight:600;font-size:14px;letter-spacing:.04em">
-            View candidate profile →
+            View ${escapeHtml(opts.deliveryLabel)} →
           </a>
         </td></tr>
       </table>
@@ -103,7 +105,7 @@ export const sendShareLinkEmail = createServerFn({ method: "POST" })
           .maybeSingle(),
         supabase
           .from("presentations")
-          .select("id, share_slug, access_code")
+          .select("id, share_slug, access_code, template_version")
           .eq("candidate_id", data.candidate_id)
           .maybeSingle(),
         supabase
@@ -117,18 +119,24 @@ export const sendShareLinkEmail = createServerFn({ method: "POST" })
     if (!pres?.share_slug)
       throw new Error("Create a share link first, then send the email.");
 
-    const origin = process.env.APP_ORIGIN || process.env.PUBLIC_APP_URL || "";
-    const shareUrl = `${origin.replace(/\/$/, "")}/p/${pres.share_slug}`;
+    const shareUrl = buildCandidateDeliveryUrl({
+      template: pres.template_version ?? "profile",
+      shareSlug: pres.share_slug,
+    });
 
     const senderName = profile?.full_name || profile?.email || "A One39 user";
     const subject =
       data.subject?.trim() ||
-      `${candidate.full_name} — Executive candidate profile`;
+      `${candidate.full_name} — Candidate Profile`;
     const html = buildEmailHtml({
       recipientName: data.to_name ?? null,
       senderName,
       candidateName: candidate.full_name,
       candidateRole: candidate.fit_role ?? null,
+      deliveryLabel:
+        pres.template_version === "media_review"
+          ? "Candidate Media Review"
+          : "Candidate Profile",
       message: data.message ?? null,
       shareUrl,
       accessCode: pres.access_code ?? null,

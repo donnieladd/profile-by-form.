@@ -82,7 +82,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         property: "og:description",
         content:
-          "Relational intelligence for church staffing — searches, candidate profiles, and executive-ready presentations.",
+          "Relational intelligence for church staffing — searches, candidate profiles, and profile outputs.",
       },
       { property: "og:type", content: "website" },
     ],

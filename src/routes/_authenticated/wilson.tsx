@@ -30,6 +30,7 @@ import {
   listWilsonConversations,
 } from "@/lib/wilson-conversations.functions";
 import { cn } from "@/lib/utils";
+import { AI_MODELS } from "@/lib/ai-router";
 
 export const Route = createFileRoute("/_authenticated/wilson")({
   head: () => ({
@@ -68,6 +69,7 @@ function WilsonPage() {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [candidateId, setCandidateId] = useState<string>("");
+  const [modelId, setModelId] = useState(AI_MODELS[0].id);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -76,6 +78,17 @@ function WilsonPage() {
       behavior: "smooth",
     });
   }, [messages, streaming]);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("profile-by-form.ai.model");
+    if (saved && AI_MODELS.some((m) => m.id === saved)) {
+      setModelId(saved);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("profile-by-form.ai.model", modelId);
+  }, [modelId]);
 
   async function loadConversation(id: string) {
     if (streaming) return;
@@ -141,6 +154,7 @@ function WilsonPage() {
             .slice(0, -1)
             .map((m) => ({ role: m.role, content: m.content })),
           candidate_context: candidateContext,
+          model_id: modelId,
         },
       });
       for await (const chunk of iter as AsyncIterable<{ delta: string }>) {
@@ -237,26 +251,43 @@ function WilsonPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 p-4">
             <div className="flex items-center gap-3">
               <WilsonMark className="h-9 w-11 text-[color:var(--gold)]" />
-              <div>
+                <div>
                 <div className="text-sm font-semibold text-white">Wilson</div>
                 <div className="text-xs text-white/45">
-                  google/gemini-2.5-flash · streaming
+                  {AI_MODELS.find((m) => m.id === modelId)?.label ??
+                    "AI model streaming"}
                 </div>
               </div>
             </div>
-            <Select value={candidateId} onValueChange={setCandidateId}>
-              <SelectTrigger className="h-9 w-[240px] border-white/15 bg-white/[0.06] text-xs text-white">
-                <SelectValue placeholder="Optional candidate context" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">No candidate</SelectItem>
-                {(candidates ?? []).map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.full_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="w-[230px]">
+                <Select value={modelId} onValueChange={setModelId}>
+                  <SelectTrigger className="h-9 border-white/15 bg-white/[0.06] text-xs text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AI_MODELS.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        {model.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Select value={candidateId} onValueChange={setCandidateId}>
+                <SelectTrigger className="h-9 w-[240px] border-white/15 bg-white/[0.06] text-xs text-white">
+                  <SelectValue placeholder="Optional candidate context" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No candidate</SelectItem>
+                  {(candidates ?? []).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div

@@ -18,7 +18,15 @@ import { toast } from "sonner";
 
 import { DarkCard, PageHeader, Pill, ShellCard } from "@/components/brand/brand";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { getCandidate } from "@/lib/candidates.functions";
+import { AI_MODELS } from "@/lib/ai-router";
 import {
   generateProfileSection,
   listProfileSections,
@@ -54,6 +62,7 @@ function ProfileBuilderForCandidate() {
   const saveSection = useServerFn(saveProfileSection);
   const generate = useServerFn(generateProfileSection);
   const reorder = useServerFn(reorderProfileSections);
+  const [modelId, setModelId] = useState(AI_MODELS[0].id);
   const qc = useQueryClient();
 
   const { data: candData } = useQuery({
@@ -71,6 +80,17 @@ function ProfileBuilderForCandidate() {
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [mode, setMode] = useState<"edit" | "preview">("edit");
   const lastSyncedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("profile-by-form.ai.model");
+    if (saved && AI_MODELS.some((m) => m.id === saved)) {
+      setModelId(saved);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("profile-by-form.ai.model", modelId);
+  }, [modelId]);
 
   // Pick first section by default; sync editor when active section changes from DB
   useEffect(() => {
@@ -158,6 +178,7 @@ function ProfileBuilderForCandidate() {
           section_id: active.id,
           candidate_id: candidateId,
           section_key: active.section_key,
+          model_id: modelId,
         },
       });
       for await (const chunk of stream as AsyncIterable<{
@@ -203,7 +224,7 @@ function ProfileBuilderForCandidate() {
             <Button
               size="sm"
               disabled={!canPublish}
-              onClick={() => toast.info("Publishing flow lands with presentations.")}
+              onClick={() => toast.info("Publishing flow lands with profiles.")}
             >
               <Send className="mr-2 h-3.5 w-3.5" />
               Publish
@@ -315,6 +336,21 @@ function ProfileBuilderForCandidate() {
                   <Eye className="mr-1 inline h-3 w-3" /> Preview
                 </button>
               </div>
+              <Select
+                value={modelId}
+                onValueChange={(v) => setModelId(v)}
+              >
+                <SelectTrigger className="h-8 min-w-[240px] border-foreground/20 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {AI_MODELS.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      {model.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 variant="outline"
                 size="sm"

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { DEFAULT_PROFILE_SECTIONS } from "./schemas";
+import { streamChatCompletion } from "./ai-router";
 
 const SECTION_KEYS = DEFAULT_PROFILE_SECTIONS.map((s) => s.key) as [
   string,
@@ -140,14 +141,15 @@ export const generateProfileSection = createServerFn({ method: "POST" })
         section_id: z.string().uuid(),
         candidate_id: z.string().uuid(),
         section_key: z.enum(SECTION_KEYS),
+        model_id: z
+          .string()
+          .max(200)
+          .optional(),
       })
       .parse(input),
   )
   .handler(async function* ({ data, context }) {
     const { supabase } = context;
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("Wilson is unavailable: missing AI gateway key.");
-
     const [candRes, srcRes, sectionRes] = await Promise.all([
       supabase
         .from("candidates")
@@ -178,64 +180,20 @@ export const generateProfileSection = createServerFn({ method: "POST" })
       sources: srcRes.data ?? [],
     });
 
-    const upstream = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          stream: true,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: userPrompt },
-          ],
-        }),
-      },
-    );
-
-    if (!upstream.ok || !upstream.body) {
-      const txt = await upstream.text().catch(() => "");
-      if (upstream.status === 429)
-        throw new Error("Wilson is rate limited. Try again shortly.");
-      if (upstream.status === 402)
-        throw new Error("AI credits exhausted. Add credits in workspace settings.");
-      throw new Error(`Wilson failed (${upstream.status}): ${txt.slice(0, 200)}`);
-    }
-
-    let buffer = "";
     let assembled = "";
-    const decoder = new TextDecoder();
-    const reader = upstream.body.getReader();
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        let nl: number;
-        while ((nl = buffer.indexOf("\n")) !== -1) {
-          const rawLine = buffer.slice(0, nl).trim();
-          buffer = buffer.slice(nl + 1);
-          if (!rawLine.startsWith("data:")) continue;
-          const payload = rawLine.slice(5).trim();
-          if (!payload || payload === "[DONE]") continue;
-          try {
-            const json = JSON.parse(payload);
-            const delta = json?.choices?.[0]?.delta?.content;
-            if (typeof delta === "string" && delta.length > 0) {
-              assembled += delta;
-              yield { delta };
-            }
-          } catch {
-            /* ignore partial json */
-          }
-        }
+    const stream = streamChatCompletion({
+      modelId: data.model_id,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
+    });
+
+    for await (const chunk of stream) {
+      if (chunk.delta) {
+        assembled += chunk.delta;
+        yield { delta: chunk.delta };
       }
-    } finally {
-      reader.releaseLock?.();
     }
 
     if (assembled.length > 0) {

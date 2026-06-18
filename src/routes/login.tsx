@@ -100,7 +100,7 @@ function LoginPage() {
             </h2>
             <p className="mt-7 text-lg leading-8 text-white/62">
               An intelligence workspace for building deeper candidate profiles,
-              crafting executive-ready presentations, and moving the right
+              crafting executive-ready profiles, and moving the right
               leaders into the right places — faster.
             </p>
             <div className="mt-10 space-y-6">

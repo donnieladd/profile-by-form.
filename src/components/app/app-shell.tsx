@@ -56,7 +56,7 @@ const navItems = [
   { to: "/candidates", label: "Candidates", icon: Users },
   { to: "/source", label: "Source Package", icon: FolderOpen },
   { to: "/profile-builder", label: "Profile Builder", icon: FileText },
-  { to: "/presentations", label: "Presentations", icon: Presentation },
+  { to: "/presentations", label: "Profiles", icon: Presentation },
   { to: "/wilson", label: "Wilson", icon: Sparkles },
   { to: "/admin", label: "Admin", icon: ShieldCheck },
   { to: "/settings", label: "Settings", icon: Settings },
@@ -291,7 +291,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Search className="h-4 w-4" />
             <span className="hidden sm:inline">
-              Search candidates, searches, presentations…
+              Search candidates, searches, profiles…
             </span>
             <span className="sm:hidden">Search…</span>
             <span className="ml-auto rounded-md border border-foreground/10 px-2 py-1 text-xs">
@@ -326,7 +326,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput
-          placeholder="Search candidates, searches, presentations…"
+          placeholder="Search candidates, searches, profiles…"
           value={q}
           onValueChange={setQ}
         />
@@ -381,7 +381,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </CommandGroup>
           )}
           {results && results.presentations.length > 0 && (
-            <CommandGroup heading="Presentations">
+            <CommandGroup heading="Profiles">
               {results.presentations.map((p) => (
                 <CommandItem
                   key={p.id}

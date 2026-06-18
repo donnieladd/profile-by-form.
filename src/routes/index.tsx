@@ -20,7 +20,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "An intelligence workspace for building deeper candidate profiles and executive-ready presentations.",
+          "An intelligence workspace for building deeper candidate profiles and profile outputs.",
       },
     ],
   }),
@@ -49,7 +49,7 @@ function LandingPage() {
               "How It Works",
               "Solutions",
               "Candidate Profiles",
-              "Presentation Builder",
+              "Profile Outputs",
               "Resources",
             ].map((x) => (
               <span key={x}>{x}</span>
@@ -158,8 +158,8 @@ function LandingPage() {
               "Capture the full picture with guided intake and relational signals.",
             ],
             [
-              "Presentation Builder",
-              "Craft executive-ready presentations that tell the right story.",
+              "Profile Outputs",
+              "Craft executive-ready profiles that tell the right story.",
             ],
             [
               "Monday.com Sync",
@@ -171,7 +171,7 @@ function LandingPage() {
             ],
             [
               "Executive Workflows",
-              "Move searches from discovery to presentation with clarity.",
+              "Move searches from discovery to profiles with clarity.",
             ],
           ].map(([title, body]) => (
             <div

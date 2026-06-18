@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -28,13 +28,31 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   CinematicPresentation,
   type PresentationCandidate,
 } from "@/components/presentation/cinematic-presentation";
+import { MediaReviewPresentation } from "@/components/presentation/media-review-presentation";
+import { ProfileAltPresentation } from "@/components/presentation/profile-alt-presentation";
 import { listProfileSections } from "@/lib/profile.functions";
-import { createOrRefreshShareLink } from "@/lib/presentations.functions";
+import {
+  createOrRefreshShareLink,
+  getPresentationTemplateByCandidate,
+} from "@/lib/presentations.functions";
+import {
+  PresentationTemplate,
+  templateOptions,
+} from "@/lib/presentation-templates";
 import { getPresentationStats } from "@/lib/presentation-analytics.functions";
 import { listShareEmails, sendShareLinkEmail } from "@/lib/email.functions";
+import { listSourceItems } from "@/lib/source.functions";
+import { buildCandidateDeliveryUrl } from "@/lib/delivery-routing";
 
 export function PresentationTab({
   candidateId,
@@ -45,6 +63,8 @@ export function PresentationTab({
 }) {
   const list = useServerFn(listProfileSections);
   const shareFn = useServerFn(createOrRefreshShareLink);
+  const templateFn = useServerFn(getPresentationTemplateByCandidate);
+  const sourceItemsFn = useServerFn(listSourceItems);
   const statsFn = useServerFn(getPresentationStats);
   const qc = useQueryClient();
   const { data: sections, isLoading } = useQuery({
@@ -56,14 +76,61 @@ export function PresentationTab({
     queryFn: () => statsFn({ data: { candidate_id: candidateId } }),
     refetchInterval: 30_000,
   });
+  const { data: sourceItems } = useQuery({
+    queryKey: ["source-items", candidateId],
+    queryFn: () => sourceItemsFn({ data: { candidate_id: candidateId } }),
+  });
+  const { data: persistedTemplate } = useQuery({
+    queryKey: ["presentation-template", candidateId],
+    queryFn: () =>
+      templateFn({ data: { candidate_id: candidateId } }).then((res) => {
+        if (!res || !("template_version" in res)) return undefined;
+        return res.template_version;
+      }),
+    staleTime: 5 * 60_000,
+  });
 
   const [showCover, setShowCover] = useState(true);
+  const [templateVersion, setTemplateVersion] = useState<PresentationTemplate>(
+    "profile",
+  );
+
+  const activeTemplate = templateOptions.find((option) => option.id === templateVersion);
+
+  useEffect(() => {
+    if (!persistedTemplate) return;
+    setTemplateVersion(persistedTemplate);
+  }, [persistedTemplate]);
+
+  useEffect(() => {
+    if (activeTemplate && !activeTemplate.supportsCover) {
+      setShowCover(false);
+    }
+  }, [activeTemplate]);
+  const mediaVideos = (sourceItems ?? [])
+    .filter((i: { kind: string; monday_link?: string | null; label?: string | null; file_name?: string | null }) =>
+      i.kind === "video_links" && !!(i.monday_link ?? "").trim(),
+    )
+    .map((i) => ({
+      title: i.label ?? i.file_name ?? "Video",
+      url: i.monday_link ?? "",
+    }));
 
   const shareMut = useMutation({
     mutationFn: (v: { regenerate?: boolean }) =>
-      shareFn({ data: { candidate_id: candidateId, regenerate: v.regenerate } }),
+      shareFn({
+        data: {
+          candidate_id: candidateId,
+          regenerate: v.regenerate,
+          template_version: templateVersion,
+        },
+      }),
     onSuccess: (res) => {
-      const url = `${window.location.origin}/p/${res.share_slug}`;
+      setTemplateVersion(res.template_version ?? templateVersion);
+      const url = buildCandidateDeliveryUrl({
+        template: res.template_version ?? templateVersion,
+        shareSlug: res.share_slug,
+      });
       navigator.clipboard.writeText(url).catch(() => {});
       toast.success("Share link copied to clipboard");
       qc.invalidateQueries({ queryKey: ["presentation-candidates"] });
@@ -98,7 +165,7 @@ export function PresentationTab({
       <ShellCard className="flex flex-wrap items-center justify-between gap-4 p-5">
         <div>
           <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[color:var(--gold-deep)]">
-            Cinematic presentation
+            Profile template
           </div>
           <h3 className="mt-1 font-serif text-2xl">
             {candidate.full_name} · candidate brief
@@ -109,16 +176,39 @@ export function PresentationTab({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 rounded-full border border-foreground/10 bg-card px-3 py-1.5 text-xs">
-            <Switch
-              checked={showCover}
-              onCheckedChange={setShowCover}
-              aria-label="Toggle cover page"
-            />
+          <div className="flex items-center gap-2 rounded-full border border-foreground/10 bg-card px-3 py-1.5 text-xs">
             <span className="font-mono uppercase tracking-[0.18em] text-foreground/60">
-              Cover page
+              Template
             </span>
-          </label>
+            <Select
+              value={templateVersion}
+              onValueChange={(value) => setTemplateVersion(value as PresentationTemplate)}
+            >
+              <SelectTrigger className="h-8 w-44 text-xs">
+                <SelectValue placeholder="Profile type" />
+              </SelectTrigger>
+              <SelectContent>
+                {templateOptions.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {activeTemplate?.supportsCover ? (
+              <>
+                <Switch
+                  checked={showCover}
+                  onCheckedChange={setShowCover}
+                  aria-label="Toggle cover page"
+                />
+                <span className="font-mono uppercase tracking-[0.18em] text-foreground/60">
+                  Cover page
+                </span>
+              </>
+            ) : null}
+          </div>
           <Button
             variant="outline"
             size="sm"
@@ -157,21 +247,48 @@ export function PresentationTab({
         </div>
       </ShellCard>
 
-      <div className="overflow-hidden rounded-3xl border border-foreground/10 shadow-2xl">
-        <CinematicPresentation
-          candidate={candidate}
-          showCover={showCover}
-          approvalState={approvalState}
-          sections={(sections ?? []).map((s) => ({
-            id: s.id,
-            title: s.title,
-            section_key: s.section_key,
-            body_md: s.body_md,
-            order_index: s.order_index,
-            status: s.status,
-          }))}
-        />
-      </div>
+      {templateVersion === "media_review" ? (
+        <div className="overflow-hidden rounded-3xl border border-foreground/10 shadow-2xl">
+          <MediaReviewPresentation
+            candidateName={candidate.full_name}
+            title={candidate.full_name}
+            subtitle={candidate.fit_role}
+            city={candidate.city ?? null}
+            avatarUrl={candidate.avatar_url ?? null}
+            videos={mediaVideos}
+          />
+        </div>
+      ) : templateVersion === "profile_alt" ? (
+        <div className="overflow-hidden rounded-3xl border border-foreground/10 shadow-2xl">
+          <ProfileAltPresentation
+            candidate={candidate}
+            sections={(sections ?? []).map((s) => ({
+              id: s.id,
+              title: s.title,
+              section_key: s.section_key,
+              body_md: s.body_md,
+              order_index: s.order_index,
+              status: s.status,
+            }))}
+          />
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-3xl border border-foreground/10 shadow-2xl">
+          <CinematicPresentation
+            candidate={candidate}
+            showCover={showCover}
+            approvalState={approvalState}
+            sections={(sections ?? []).map((s) => ({
+              id: s.id,
+              title: s.title,
+              section_key: s.section_key,
+              body_md: s.body_md,
+              order_index: s.order_index,
+              status: s.status,
+            }))}
+          />
+        </div>
+      )}
 
       {viewStats && viewStats.total > 0 && (
         <AnalyticsCard candidateId={candidateId} stats={viewStats} />
@@ -366,7 +483,7 @@ function EmailShareDialog({
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Email this presentation</DialogTitle>
+          <DialogTitle>Email this profile</DialogTitle>
           <DialogDescription>
             Sends a branded email with the share link. Create a share link
             first if you haven't yet.

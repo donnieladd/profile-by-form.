@@ -250,7 +250,7 @@ function NotificationPrefsCard() {
             </div>
             <PrefRow
               label="Share link opened"
-              hint="When a client views a presentation you shared."
+              hint="When a client views a profile you shared."
               checked={state.notify_share_view}
               onChange={(v) => setPref("notify_share_view", v)}
             />
