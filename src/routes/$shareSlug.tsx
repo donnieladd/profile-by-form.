@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { PublicSharePage } from "./p.$shareSlug";
+import { PublicSharePageContent } from "./p.$shareSlug";
 
 export const Route = createFileRoute("/$shareSlug")({
   head: () => ({
@@ -9,5 +9,8 @@ export const Route = createFileRoute("/$shareSlug")({
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),
-  component: PublicSharePage,
+  component: () => {
+    const { shareSlug } = Route.useParams();
+    return <PublicSharePageContent shareSlug={shareSlug} />;
+  },
 });

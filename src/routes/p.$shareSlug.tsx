@@ -23,8 +23,11 @@ export const Route = createFileRoute("/p/$shareSlug")({
   component: PublicSharePage,
 });
 
-export function PublicSharePage() {
-  const { shareSlug } = Route.useParams();
+export type PublicSharePageProps = {
+  shareSlug: string;
+};
+
+export function PublicSharePageContent({ shareSlug }: PublicSharePageProps) {
   const [code, setCode] = useState("");
   const [submittedCode, setSubmittedCode] = useState<string | undefined>(
     undefined,
@@ -225,4 +228,10 @@ export function PublicSharePage() {
       </footer>
     </div>
   );
+}
+
+export function PublicSharePage() {
+  const { shareSlug } = Route.useParams();
+
+  return <PublicSharePageContent shareSlug={shareSlug} />;
 }

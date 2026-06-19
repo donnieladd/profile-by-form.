@@ -9,8 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as Login2RouteImport } from './routes/login 2'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as ShareSlugRouteImport } from './routes/$shareSlug'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PShareSlugRouteImport } from './routes/p.$shareSlug'
 import { Route as AuthenticatedWilsonRouteImport } from './routes/_authenticated/wilson'
@@ -27,6 +29,11 @@ import { Route as AuthenticatedSearchesSearchIdRouteImport } from './routes/_aut
 import { Route as AuthenticatedProfileBuilderCandidateIdRouteImport } from './routes/_authenticated/profile-builder.$candidateId'
 import { Route as AuthenticatedCandidatesCandidateIdRouteImport } from './routes/_authenticated/candidates.$candidateId'
 
+const Login2Route = Login2RouteImport.update({
+  id: '/login 2',
+  path: '/login 2',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -34,6 +41,11 @@ const LoginRoute = LoginRouteImport.update({
 } as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShareSlugRoute = ShareSlugRouteImport.update({
+  id: '/$shareSlug',
+  path: '/$shareSlug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -120,7 +132,9 @@ const AuthenticatedCandidatesCandidateIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$shareSlug': typeof ShareSlugRoute
   '/login': typeof LoginRoute
+  '/login 2': typeof Login2Route
   '/admin': typeof AuthenticatedAdminRoute
   '/candidates': typeof AuthenticatedCandidatesRouteWithChildren
   '/candidates_compare': typeof AuthenticatedCandidates_compareRoute
@@ -138,7 +152,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$shareSlug': typeof ShareSlugRoute
   '/login': typeof LoginRoute
+  '/login 2': typeof Login2Route
   '/admin': typeof AuthenticatedAdminRoute
   '/candidates': typeof AuthenticatedCandidatesRouteWithChildren
   '/candidates_compare': typeof AuthenticatedCandidates_compareRoute
@@ -157,8 +173,10 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$shareSlug': typeof ShareSlugRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
+  '/login 2': typeof Login2Route
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/candidates': typeof AuthenticatedCandidatesRouteWithChildren
   '/_authenticated/candidates_compare': typeof AuthenticatedCandidates_compareRoute
@@ -178,7 +196,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$shareSlug'
     | '/login'
+    | '/login 2'
     | '/admin'
     | '/candidates'
     | '/candidates_compare'
@@ -196,7 +216,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/$shareSlug'
     | '/login'
+    | '/login 2'
     | '/admin'
     | '/candidates'
     | '/candidates_compare'
@@ -214,8 +236,10 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/$shareSlug'
     | '/_authenticated'
     | '/login'
+    | '/login 2'
     | '/_authenticated/admin'
     | '/_authenticated/candidates'
     | '/_authenticated/candidates_compare'
@@ -234,13 +258,22 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ShareSlugRoute: typeof ShareSlugRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
+  Login2Route: typeof Login2Route
   PShareSlugRoute: typeof PShareSlugRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login 2': {
+      id: '/login 2'
+      path: '/login 2'
+      fullPath: '/login 2'
+      preLoaderRoute: typeof Login2RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -253,6 +286,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$shareSlug': {
+      id: '/$shareSlug'
+      path: '/$shareSlug'
+      fullPath: '/$shareSlug'
+      preLoaderRoute: typeof ShareSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -439,8 +479,10 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ShareSlugRoute: ShareSlugRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
+  Login2Route: Login2Route,
   PShareSlugRoute: PShareSlugRoute,
 }
 export const routeTree = rootRouteImport

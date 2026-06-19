@@ -1,5 +1,3 @@
-import { createHmac } from "node:crypto";
-
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -20,26 +18,53 @@ function tokenSecret(): string {
   return s;
 }
 
-export function signViewToken(payload: {
+export async function signViewToken(payload: {
   view_id: string;
   presentation_id: string;
   share_slug: string;
 }) {
-  const h = createHmac("sha256", tokenSecret());
-  h.update(`${payload.view_id}|${payload.presentation_id}|${payload.share_slug}`);
-  return h.digest("base64url");
+  const message = `${payload.view_id}|${payload.presentation_id}|${payload.share_slug}`;
+  const keyData = new TextEncoder().encode(tokenSecret());
+  const key = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(message),
+  );
+  return base64urlFromBuffer(signature);
 }
 
-function verifyViewToken(payload: {
+function base64urlFromBuffer(buf: ArrayBufferLike) {
+  const bytes = new Uint8Array(buf);
+  let raw = "";
+  for (const b of bytes) raw += String.fromCharCode(b);
+  return btoa(raw).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function base64urlToBytes(input: string) {
+  const pad = input.length % 4 === 2 ? "==" : input.length % 4 === 3 ? "=" : "";
+  const cleaned = input.replace(/-/g, "+").replace(/_/g, "/") + pad;
+  const raw = atob(cleaned);
+  const bytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+  return bytes;
+}
+
+async function verifyViewToken(payload: {
   view_id: string;
   presentation_id: string;
   share_slug: string;
   token: string;
 }) {
-  const expected = signViewToken(payload);
-  // constant-time-ish compare via Buffer
-  const a = Buffer.from(expected);
-  const b = Buffer.from(payload.token);
+  const expected = await signViewToken(payload);
+  const a = base64urlToBytes(expected);
+  const b = base64urlToBytes(payload.token);
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
@@ -126,15 +151,15 @@ export async function recordPresentationView(args: {
 
   if (!viewId) return null;
 
-  return {
-    view_id: viewId,
-    token: signViewToken({
+    return {
       view_id: viewId,
-      presentation_id: args.presentation_id,
-      share_slug: args.share_slug,
-    }),
-  };
-}
+      token: await signViewToken({
+        view_id: viewId,
+        presentation_id: args.presentation_id,
+        share_slug: args.share_slug,
+      }),
+    };
+  }
 
 // --- public update endpoint -------------------------------------------------
 
@@ -163,7 +188,7 @@ export const updatePresentationViewDwell = createServerFn({ method: "POST" })
     if (!row) return { ok: false as const };
     if (row.share_slug !== data.share_slug) return { ok: false as const };
 
-    const ok = verifyViewToken({
+    const ok = await verifyViewToken({
       view_id: row.id,
       presentation_id: row.presentation_id,
       share_slug: row.share_slug,
