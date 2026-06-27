@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getCandidate } from "@/lib/candidates.functions";
-import { AI_MODELS } from "@/lib/ai-router";
+import { AI_MODELS, type AIModelId } from "@/lib/ai-router";
 import {
   generateProfileSection,
   listProfileSections,
