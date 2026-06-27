@@ -30,7 +30,7 @@ import {
   listWilsonConversations,
 } from "@/lib/wilson-conversations.functions";
 import { cn } from "@/lib/utils";
-import { AI_MODELS } from "@/lib/ai-router";
+import { AI_MODELS, type AIModelId } from "@/lib/ai-router";
 
 export const Route = createFileRoute("/_authenticated/wilson")({
   head: () => ({
