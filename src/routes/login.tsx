@@ -380,7 +380,7 @@ function LoginPage() {
                   type="button"
                   className="w-full"
                   disabled={busy || !IS_BACKDOOR_ENABLED || !credentialsReady}
-                  onClick={signInFounderWithKey}
+                  onClick={() => signInFounderWithKey()}
                 >
                   {busy ? "Authenticating..." : "Unlock developer workspace"}
                 </Button>
