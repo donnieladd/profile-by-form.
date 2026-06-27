@@ -3,13 +3,6 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-// Re-export server-only helpers for other server modules to consume. These live
-// in a .server.ts module so they never enter the client bundle.
-export {
-  signViewToken,
-  recordPresentationView,
-} from "./presentation-analytics.server";
-
 // --- public update endpoint -------------------------------------------------
 
 // PUBLIC — beacon-style update from the share page. Requires a signed view
