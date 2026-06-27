@@ -84,7 +84,7 @@ function ProfileBuilderForCandidate() {
   useEffect(() => {
     const saved = window.localStorage.getItem("profile-by-form.ai.model");
     if (saved && AI_MODELS.some((m) => m.id === saved)) {
-      setModelId(saved);
+      setModelId(saved as AIModelId);
     }
   }, []);
 
