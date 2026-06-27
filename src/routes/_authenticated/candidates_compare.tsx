@@ -30,8 +30,8 @@ function CompareCandidatesPage() {
   const search = Route.useSearch();
   const ids = (search.ids ?? "")
     .split(",")
-    .map((s) => s.trim())
-    .filter((s) => s.length === 36);
+    .map((s: string) => s.trim())
+    .filter((s: string) => s.length === 36);
 
   const compareFn = useServerFn(compareCandidates);
   const { data, isLoading, error } = useQuery({

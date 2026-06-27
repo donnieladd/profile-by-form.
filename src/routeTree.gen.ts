@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as Login2RouteImport } from './routes/login 2'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as ShareSlugRouteImport } from './routes/$shareSlug'
@@ -29,11 +28,6 @@ import { Route as AuthenticatedSearchesSearchIdRouteImport } from './routes/_aut
 import { Route as AuthenticatedProfileBuilderCandidateIdRouteImport } from './routes/_authenticated/profile-builder.$candidateId'
 import { Route as AuthenticatedCandidatesCandidateIdRouteImport } from './routes/_authenticated/candidates.$candidateId'
 
-const Login2Route = Login2RouteImport.update({
-  id: '/login 2',
-  path: '/login 2',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -134,7 +128,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$shareSlug': typeof ShareSlugRoute
   '/login': typeof LoginRoute
-  '/login 2': typeof Login2Route
   '/admin': typeof AuthenticatedAdminRoute
   '/candidates': typeof AuthenticatedCandidatesRouteWithChildren
   '/candidates_compare': typeof AuthenticatedCandidates_compareRoute
@@ -154,7 +147,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$shareSlug': typeof ShareSlugRoute
   '/login': typeof LoginRoute
-  '/login 2': typeof Login2Route
   '/admin': typeof AuthenticatedAdminRoute
   '/candidates': typeof AuthenticatedCandidatesRouteWithChildren
   '/candidates_compare': typeof AuthenticatedCandidates_compareRoute
@@ -176,7 +168,6 @@ export interface FileRoutesById {
   '/$shareSlug': typeof ShareSlugRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
-  '/login 2': typeof Login2Route
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/candidates': typeof AuthenticatedCandidatesRouteWithChildren
   '/_authenticated/candidates_compare': typeof AuthenticatedCandidates_compareRoute
@@ -198,7 +189,6 @@ export interface FileRouteTypes {
     | '/'
     | '/$shareSlug'
     | '/login'
-    | '/login 2'
     | '/admin'
     | '/candidates'
     | '/candidates_compare'
@@ -218,7 +208,6 @@ export interface FileRouteTypes {
     | '/'
     | '/$shareSlug'
     | '/login'
-    | '/login 2'
     | '/admin'
     | '/candidates'
     | '/candidates_compare'
@@ -239,7 +228,6 @@ export interface FileRouteTypes {
     | '/$shareSlug'
     | '/_authenticated'
     | '/login'
-    | '/login 2'
     | '/_authenticated/admin'
     | '/_authenticated/candidates'
     | '/_authenticated/candidates_compare'
@@ -261,19 +249,11 @@ export interface RootRouteChildren {
   ShareSlugRoute: typeof ShareSlugRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
-  Login2Route: typeof Login2Route
   PShareSlugRoute: typeof PShareSlugRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login 2': {
-      id: '/login 2'
-      path: '/login 2'
-      fullPath: '/login 2'
-      preLoaderRoute: typeof Login2RouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -482,19 +462,8 @@ const rootRouteChildren: RootRouteChildren = {
   ShareSlugRoute: ShareSlugRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
-  Login2Route: Login2Route,
   PShareSlugRoute: PShareSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

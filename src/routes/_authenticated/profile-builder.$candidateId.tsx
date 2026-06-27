@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getCandidate } from "@/lib/candidates.functions";
-import { AI_MODELS } from "@/lib/ai-router";
+import { AI_MODELS, type AIModelId } from "@/lib/ai-router";
 import {
   generateProfileSection,
   listProfileSections,
@@ -84,7 +84,7 @@ function ProfileBuilderForCandidate() {
   useEffect(() => {
     const saved = window.localStorage.getItem("profile-by-form.ai.model");
     if (saved && AI_MODELS.some((m) => m.id === saved)) {
-      setModelId(saved);
+      setModelId(saved as AIModelId);
     }
   }, []);
 
@@ -338,7 +338,7 @@ function ProfileBuilderForCandidate() {
               </div>
               <Select
                 value={modelId}
-                onValueChange={(v) => setModelId(v)}
+                onValueChange={(v) => setModelId(v as AIModelId)}
               >
                 <SelectTrigger className="h-8 min-w-[240px] border-foreground/20 text-xs">
                   <SelectValue />

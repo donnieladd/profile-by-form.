@@ -46,16 +46,19 @@ function hasBypassCookie(cookieHeader: string | null | undefined): boolean {
 }
 
 export const Route = createFileRoute("/_authenticated")({
-  beforeLoad: async ({ request }) => {
+  beforeLoad: async () => {
     if (typeof window !== "undefined") {
       if (isLocalhostHost(window.location.hostname)) return;
-    } else if (parseLocalHostFromUrl(request?.url)) {
-      return;
-    }
-
-    const cookieHeader = request?.headers.get("cookie");
-    if (hasBypassCookie(cookieHeader)) {
-      return;
+    } else {
+      const { getRequest } = await import("@tanstack/react-start/server");
+      const request = getRequest();
+      if (parseLocalHostFromUrl(request?.url)) {
+        return;
+      }
+      const cookieHeader = request?.headers.get("cookie");
+      if (hasBypassCookie(cookieHeader)) {
+        return;
+      }
     }
 
     try {

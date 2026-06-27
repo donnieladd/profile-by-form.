@@ -126,10 +126,12 @@ export function PresentationTab({
         },
       }),
     onSuccess: (res) => {
-      setTemplateVersion(res.template_version ?? templateVersion);
+      const nextTemplate =
+        (res.template_version as PresentationTemplate | null) ?? templateVersion;
+      setTemplateVersion(nextTemplate);
       const url = buildCandidateDeliveryUrl({
-        template: res.template_version ?? templateVersion,
-        shareSlug: res.share_slug,
+        template: nextTemplate,
+        shareSlug: res.share_slug ?? "",
       });
       navigator.clipboard.writeText(url).catch(() => {});
       toast.success("Share link copied to clipboard");
