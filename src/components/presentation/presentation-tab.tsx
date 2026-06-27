@@ -131,7 +131,7 @@ export function PresentationTab({
       setTemplateVersion(nextTemplate);
       const url = buildCandidateDeliveryUrl({
         template: nextTemplate,
-        shareSlug: res.share_slug,
+        shareSlug: res.share_slug ?? "",
       });
       navigator.clipboard.writeText(url).catch(() => {});
       toast.success("Share link copied to clipboard");
