@@ -261,7 +261,7 @@ function WilsonPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="w-[230px]">
-                <Select value={modelId} onValueChange={setModelId}>
+                <Select value={modelId} onValueChange={(v) => setModelId(v as AIModelId)}>
                   <SelectTrigger className="h-9 border-white/15 bg-white/[0.06] text-xs text-white">
                     <SelectValue />
                   </SelectTrigger>
