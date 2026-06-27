@@ -338,7 +338,7 @@ function ProfileBuilderForCandidate() {
               </div>
               <Select
                 value={modelId}
-                onValueChange={(v) => setModelId(v)}
+                onValueChange={(v) => setModelId(v as AIModelId)}
               >
                 <SelectTrigger className="h-8 min-w-[240px] border-foreground/20 text-xs">
                   <SelectValue />
