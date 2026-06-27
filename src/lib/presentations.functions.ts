@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { recordPresentationView } from "./presentation-analytics.functions";
+import { recordPresentationView } from "./presentation-analytics.server";
 import {
   type PresentationTemplate,
   templateIds,
